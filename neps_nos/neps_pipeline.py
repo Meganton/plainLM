@@ -328,7 +328,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_size", type=str, default="8M", choices=["8M_1D", "46M_1D", "8M", "46M"], help="Model size to use for training.")
     parser.add_argument("--result_dir", type=str, required=True, help="Directory to save checkpoints and logs.")
     parser.add_argument("--runname", type=str, default=None, help="Unique name to use for neps folder and results file.")
-    parser.add_argument("--runtime", type=int, default=1, help="Time budget for the neps run in minutes.")
+    parser.add_argument("--runtime", type=int, default=None, help="Time budget for the neps run in minutes.")
     parser.add_argument("--evaluations", type=int, default=None, help="Evaluations budget.")
     parser.add_argument("--neps_space_config", type=str, required=True, help="The space config to choose.")
     # Dataset path overrides for $TMPDIR usage
