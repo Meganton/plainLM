@@ -11,6 +11,9 @@ env/
 .venv/
 .env/
 
+# Ignore lock files
+*.lock
+
 # Ignore log files
 *.log
 
@@ -39,12 +42,18 @@ wandb/
 synthetic/*plots/
 
 # Ignore neps runs and results
-neps_runs/*/neps/
-neps_runs/*/results/
+neps_runs/**/neps/
+neps_runs/**/results/
 
 # Ignore logs
 neps_runs/log/
 neps_runs/_log/
 
 # Ignore plots
-neps_nos/plots/
+neps_plots/plots/
+
+# Ignore old and unused elements
+neps_nos/old/
+neps_nos/tests/
+neps_cluster_scripts/old/
+neps_cluster_scripts/tests/

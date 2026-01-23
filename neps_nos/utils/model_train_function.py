@@ -1,41 +1,70 @@
-"""Pretrain a Transformer on language modeling."""
+import sys
+from pathlib import Path
 
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning, message=".*Profiler function.*will be ignored")
-
-import logging
-logging.getLogger("torch._logging").setLevel(logging.ERROR)
+# Add parent directory to path so we can import from plainLM root
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from collections import defaultdict
 
-from absl import app, flags
+import torch
 
 import utils
 from checkpoint_utils import save_checkpoint
 from data import get_dataloaders
 from engine import TorchEngine
 from models import construct_model
+from optim import initialize_scheduler
 from torch_utils import destroy_ddp, pytorch_setup
 from utils import print_master
 
-flags.DEFINE_string("config", "config/config.yaml", "Path to config.yaml file.")
-flags.DEFINE_integer("job_idx", None, "Job idx for job-array sweeps. From 0 to n-1.")
-flags.DEFINE_integer("job_cluster", None, "Job cluster ID.")
-FLAGS = flags.FLAGS
+CFG_PATH_8M = "config/optsearch/workloads/8M_200BT.yaml"
+CFG_PATH_8M_1D = "config/optsearch/workloads/8M_200BT_1device.yaml"
+CFG_PATH_46M = "config/optsearch/workloads/46M_1BT.yaml"
+CFG_PATH_46M_1D = "config/optsearch/workloads/46M_1BT_1device.yaml"
 
+def train_model(
+  optimizer_cls,
+  lr: float,
+  pipeline_directory: str,
+  weight_decay: float = 0,
+  config_path: str = CFG_PATH_8M,
+  n_steps: int = -1,
+  trainset_path: str = None,  # For $TMPDIR support
+  validset_path: str = None,  # For $TMPDIR support
+) -> float:
+  """
+  Train a transformer on Causal Language Modeling.
 
-def main(_):
-  CFG_PATH, JOB_IDX = FLAGS.config, FLAGS.job_idx
-  cfg, _ = utils.load_config(CFG_PATH, JOB_IDX)
+  Args:
+    otpimizer_cls: optimizer class to use for this training run.
+    lr: learning rate to use for this training run.
+    pipeline_directory: directory to save checkpoints and logs.
+    trainset_path: Optional override for training dataset path (for $TMPDIR usage)
+    validset_path: Optional override for validation dataset path (for $TMPDIR usage)
+  Returns:
+    valid_loss: validation loss after training.
+  """
+  
+  # Load a default config as a namedtuple
+  cfg, _ = utils.load_config(config_path)
+
+  # Replace some arguments with user-specified ones
+  cfg = cfg._replace(out_dir=pipeline_directory)
+  cfg = cfg._replace(wandb_dir=pipeline_directory)
+  
+  # Override dataset paths if provided (for $TMPDIR support)
+  if trainset_path is not None:
+    cfg = cfg._replace(trainset_path=trainset_path)
+  if validset_path is not None:
+    cfg = cfg._replace(validset_path=validset_path)
 
   rank, world_size, device, master_process = pytorch_setup(cfg)
 
   if master_process:
-    utils.maybe_make_dir(cfg, JOB_IDX)
+    utils.maybe_make_dir(cfg)
 
   if cfg.use_wandb and master_process:
     utils.init_wandb(cfg)
-    utils.log_job_info(FLAGS)
 
   # Dataset
   trainloader, validloader = get_dataloaders(cfg)
@@ -46,8 +75,23 @@ def main(_):
   # Engine
   engine = TorchEngine(model, cfg, device)
 
+  # Optimizer is usually defined by engine, we define it here for ease of use with NOS
+  engine.optimizers, engine.schedulers = {}, {}
+  engine.optimizers['nos'] = optimizer_cls(
+    model.parameters(),
+    lr=lr, 
+    weight_decay=weight_decay, 
+    betas=(cfg.beta1, cfg.beta2),
+    eps=getattr(cfg, "eps", 1e-8)
+  )
+  engine.schedulers['nos'] = initialize_scheduler(engine.optimizers['nos'], cfg)
+
   # If we are just cooling down, we set budget = resume + cooldown
   steps_budget = cfg.steps_budget if cfg.scheduler != "linear_cooldown" else cfg.resume_step + engine.scheduler.cooldown_steps
+
+  if n_steps > 0:
+    steps_budget = n_steps*100
+
   micro_step_budget = steps_budget * cfg.grad_accumulation_steps
   if micro_step_budget > len(trainloader):
     raise ValueError("trainloader too short!")
@@ -71,13 +115,6 @@ def main(_):
 
     # Train
     train_loss = engine.step(micro_batch)
-    
-    # Eval
-    valid_loss = None
-    if cfg.eval and step % cfg.eval_every_steps == 0 and is_step:
-      print_master("Evaluating on validation set")
-      valid_loss = engine.eval(validloader)
-    metrics["valid/loss"].append(valid_loss)
 
     # Log
     if master_process and step % cfg.log_every_steps == 0 and is_step:
@@ -88,31 +125,29 @@ def main(_):
       for n, optim in engine.optimizers.items():
         metrics[f"{n}_lr"].append(optim.param_groups[0]["lr"])
       utils.log(cfg, metrics)
-
+    
     # Checkpoint
     if (
       cfg.save_intermediate_checkpoints
       and step % cfg.save_every_steps == 0
       and is_step
     ):
-      save_checkpoint(step, model, engine, cfg, metrics, rank, JOB_IDX)
+      save_checkpoint(step, model, engine, cfg, metrics, rank)
 
-  # Eval at the end
+  # Eval
   if getattr(cfg, 'eval_when_finished', True):
     print_master("Evaluating on validation set")
     valid_loss = engine.eval(validloader)
-    metrics["valid/loss"].append(valid_loss)
     if master_process:
+      metrics["valid/loss"] = valid_loss # no append here, eval at the end only
       utils.log(cfg, metrics)
 
   # End of training: log and save checkpoint
   print_master("=== Training Completed! ===")
   if cfg.save_last_checkpoint:
-    save_checkpoint(step, model, engine, cfg, metrics, rank, JOB_IDX)
+    save_checkpoint(step, model, engine, cfg, metrics, rank)
 
   # DDP slaughtering
   destroy_ddp()
 
-
-if __name__ == "__main__":
-  app.run(main)
+  return valid_loss

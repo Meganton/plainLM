@@ -13,9 +13,9 @@ def pytorch_setup(cfg):
   ddp = int(os.environ.get("RANK", -1)) != -1  # check if DDP is enabled
 
   if ddp:
-    init_process_group(backend="nccl")
-    rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
+    init_process_group(backend="nccl", device_id=torch.device(f"cuda:{local_rank}"))
+    rank = int(os.environ["RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
     device = torch.device(f"cuda:{local_rank}")
     torch.cuda.set_device(device)

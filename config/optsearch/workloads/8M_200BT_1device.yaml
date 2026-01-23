@@ -1,5 +1,5 @@
 ##
-## 46M model, 1BT, circa 20min
+## 8M model, 200BT, circa 5min
 ##
 
 deterministic: False
@@ -18,13 +18,13 @@ valid_tokens: 2000000  # ~2000 samples
 eval_every_steps: 999999999  # no eval at train
 eval_when_finished: True  # evan at traininig completion
 
-# 46M (20_453_888 non-embedding)
+# 8M (1_574_528 non-embedding)
 model: 'transformer'
-d_model: 512
+d_model: 128
 mlp_class: 'glu'
 expand: '8/3'
 n_layers: 6
-n_heads: 8
+n_heads: 4
 rms_norm: True
 tie_embeddings: True
 torch_compile: True
@@ -33,24 +33,25 @@ torch_compile: True
 allow_tf32: True
 
 # note: step budget=token_budget/(seq_len * micro_batch_size * grad_accumulation_steps * ddp_world_size)
-steps_budget: 5000
+steps_budget: 1250
 
 # note: this is micro batch size if grad_accumulation_steps>1
 # note: with ddp, effective batch size = batch_size * grad_accumulation_steps * ddp_world_size
 micro_batch_size: 48
-grad_accumulation_steps: 1
+grad_accumulation_steps: 4
 
 # note: choose between {float32, float16, bfloat16}
 # note: float16 data type will automatically use a GradScaler
 dtype: 'bfloat16'
 
-optim: 'zero1adamw'
+optim: 'adamw'
 lr: 0.001
 weight_decay: 0.1
 adamc_wd: True
 beta1: 0.9
 beta2: 0.95
 grad_clip: 1.0
+fused_optim: True
 
 scheduler: 'wsd'
 warmup_steps: 0.02 # 2%
