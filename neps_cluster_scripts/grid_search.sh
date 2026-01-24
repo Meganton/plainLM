@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --account=hk-project-p0023364
-#SBATCH --job-name=GridSearchV1
+#SBATCH --job-name=GridSearchV2
 #SBATCH --error=neps_runs/_log/grid_search/%x/%A/%a.err
 #SBATCH --output=neps_runs/_log/grid_search/%x/%A/%a.out
-#SBATCH --time=01:02:00
+#SBATCH --time=26:00:00
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=32
 #SBATCH --partition=accelerated
