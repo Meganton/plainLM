@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --account=hk-project-p0023364
-#SBATCH --job-name=GridSearchV2
+#SBATCH --job-name=GridSearchV3
 #SBATCH --error=neps_runs/_log/grid_search/%x/%A/%a.err
 #SBATCH --output=neps_runs/_log/grid_search/%x/%A/%a.out
 #SBATCH --time=26:00:00
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=32
 #SBATCH --partition=accelerated
 #SBATCH --array=0-4
@@ -23,12 +23,12 @@ seed=$((SLURM_ARRAY_TASK_ID))
 neps_optimizer="GridSearch"                   # the NEPS algorithm to use
 model_size="8M"
 result_dir="neps_runs/grid_search"
-runname="grid_search_v2"    # used as results_dir/neps/runname/... for neps files and as results_dir/results/runname_seed.json for the results file
+runname="grid_search_v3"    # used as results_dir/neps/runname/... for neps files and as results_dir/results/runname_seed.json for the results file
 # runtime=20                                  # ca the runtime in minutes + some overhead
 evaluations=576                             # total number of evaluations to run, gets multiplied with max_fidelity
 neps_space_config="SmallAdam_f_nl_nw"          # the NOS space to search over
 # warmstarter="SGDM_inter"
-neps_mode="normal"                          # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
+neps_mode="overwrite"                          # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
 
 echo "Running NEPS with optimizer: $neps_optimizer, model size: $model_size, seed: $seed"
 

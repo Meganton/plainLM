@@ -70,7 +70,7 @@ OPTIMIZERS = {
         'base': 'hyperband',
         'eta': 2,
     }),
-    'GridSearch': ("neps_exhaustive_search", {"ignore_fidelity": "highest_fidelity", "sampling_density": 3, "sampling_tries": 3000}),
+    'GridSearch': ("neps_exhaustive_search", {"ignore_fidelity": "highest_fidelity", "sampling_density": 3}),
 }
 
 

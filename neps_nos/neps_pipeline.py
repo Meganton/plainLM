@@ -245,7 +245,7 @@ def run_distributed_training(
 def evaluate_pipeline_base(
     optimizer_cls,
     pipeline_directory: str,
-    learning_rate: float = 0.01,
+    learning_rate: float = 0.001,
     weight_decay: float = 0,
     fidelity: int = -1,
     fidelity_mode: Literal["steps", "model_size"] = "steps",
