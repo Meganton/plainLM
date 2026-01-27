@@ -98,10 +98,23 @@ run_neps_with_tmpdir() {
     echo "Syncing results back to HOME..."
     echo "=============================================="
     if [ -d "$TMPDIR/plainLM/neps_runs" ]; then
-        rsync -av "$TMPDIR/plainLM/neps_runs/" "$project_root/neps_runs/" || echo "WARNING: rsync of results failed"
+        # Use --whole-file to avoid block checksums for new files
+        rsync -av --whole-file "$TMPDIR/plainLM/neps_runs/" "$project_root/neps_runs/" || echo "WARNING: rsync of results failed"
         echo "Results synced to: $project_root/neps_runs/"
     else
         echo "No NEPS results found in tmpdir (job may have failed during initialization)"
+    fi
+    
+    # Sync log files back to HOME (SLURM output now goes to tmpdir)
+    if [ ! -z "$SLURM_JOB_ID" ]; then
+        log_dir="$project_root/neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}"
+        mkdir -p "$log_dir" 2>/dev/null
+        if [ -f "$TMPDIR/grid_search_$SLURM_ARRAY_TASK_ID.out" ]; then
+            cp "$TMPDIR/grid_search_$SLURM_ARRAY_TASK_ID.out" "$log_dir/$SLURM_ARRAY_TASK_ID.out" 2>/dev/null
+        fi
+        if [ -f "$TMPDIR/grid_search_$SLURM_ARRAY_TASK_ID.err" ]; then
+            cp "$TMPDIR/grid_search_$SLURM_ARRAY_TASK_ID.err" "$log_dir/$SLURM_ARRAY_TASK_ID.err" 2>/dev/null
+        fi
     fi
     
     return $neps_exit_code
