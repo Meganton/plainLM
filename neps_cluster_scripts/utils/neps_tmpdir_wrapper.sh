@@ -109,11 +109,11 @@ run_neps_with_tmpdir() {
     if [ ! -z "$SLURM_JOB_ID" ]; then
         log_dir="$project_root/neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}"
         mkdir -p "$log_dir" 2>/dev/null
-        if [ -f "$TMPDIR/grid_search_$SLURM_ARRAY_TASK_ID.out" ]; then
-            cp "$TMPDIR/grid_search_$SLURM_ARRAY_TASK_ID.out" "$log_dir/$SLURM_ARRAY_TASK_ID.out" 2>/dev/null
+        if [ -f "$TMPDIR/${SLURM_JOB_NAME}_$SLURM_ARRAY_TASK_ID.out" ]; then
+            cp "$TMPDIR/${SLURM_JOB_NAME}_$SLURM_ARRAY_TASK_ID.out" "$log_dir/$SLURM_ARRAY_TASK_ID.out" 2>/dev/null
         fi
-        if [ -f "$TMPDIR/grid_search_$SLURM_ARRAY_TASK_ID.err" ]; then
-            cp "$TMPDIR/grid_search_$SLURM_ARRAY_TASK_ID.err" "$log_dir/$SLURM_ARRAY_TASK_ID.err" 2>/dev/null
+        if [ -f "$TMPDIR/${SLURM_JOB_NAME}_$SLURM_ARRAY_TASK_ID.err" ]; then
+            cp "$TMPDIR/${SLURM_JOB_NAME}_$SLURM_ARRAY_TASK_ID.err" "$log_dir/$SLURM_ARRAY_TASK_ID.err" 2>/dev/null
         fi
     fi
     

@@ -285,7 +285,7 @@ def evaluate_pipeline_base(
     
     if lr_mode == "sweep":
         valid_loss = np.inf
-        for lr in [0.01, 0.005, 0.001, 0.0005]:
+        for lr in [0.002, 0.001, 0.0005, 0.00025]:
             print(f"Running learning rate sweep with lr={lr}")
             sweep_valid_loss = run_distributed_training(
                 optimizer_cls=optimizer_cls,
@@ -298,7 +298,7 @@ def evaluate_pipeline_base(
                 trainset_path=trainset_path,  # Pass through for $TMPDIR support
                 validset_path=validset_path,  # Pass through for $TMPDIR support
             )
-            print(f"Learning rate {lr} resulted in validation loss: {valid_loss}")
+            print(f"Learning rate {lr} resulted in validation loss: {sweep_valid_loss}")
             valid_loss = min(valid_loss, sweep_valid_loss)
         print(f"Best validation loss from learning rate sweep: {valid_loss}")
     else:

@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --account=hk-project-p0023364
 #SBATCH --job-name=GridSearch_full
-#SBATCH --error=/scratch/slurm_tmpdir/job_%J/grid_search_%a.err
-#SBATCH --output=/scratch/slurm_tmpdir/job_%J/grid_search_%a.out
+#SBATCH --error=/scratch/slurm_tmpdir/job_%A/grid_search_%a.err
+#SBATCH --output=/scratch/slurm_tmpdir/job_%A/grid_search_%a.out
 #SBATCH --time=26:00:00
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=32
