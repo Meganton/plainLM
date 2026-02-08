@@ -44,13 +44,16 @@ synthetic/*plots/
 # Ignore neps runs and results
 neps_runs/**/neps/
 neps_runs/**/results/
+!neps_runs/46_LI_space/
+!neps_runs/46_LI_space/results/
+!neps_runs/46_LI_space/results/*.json
 
 # Ignore logs
 neps_runs/log/
 neps_runs/_log/
 
 # Ignore plots
-neps_plots/plots/
+# neps_plots/plots/
 
 # Ignore old and unused elements
 neps_nos/old/

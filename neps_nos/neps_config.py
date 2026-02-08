@@ -71,6 +71,46 @@ OPTIMIZERS = {
         'eta': 2,
     }),
     'GridSearch': ("neps_exhaustive_search", {"ignore_fidelity": "highest_fidelity", "sampling_density": 3}),
+    'LI1_rand0.1': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('random', 0.1),
+    }),
+    'LI1_rand0.3': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('random', 0.3),
+    }),
+    'LI1_rand0.5': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('random', 0.5),
+    }),
+    'LI1_rand0.8': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('random', 0.8),
+    }),
+    'LI1_fixed1': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('fixed', 1),
+    }),
+    'LI1_fixed3': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('fixed', 3),
+    }),
+    'LI1_fixed5': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('fixed', 5),
+    }),
+    'LI1_fixed8': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('fixed', 8),
+    }),
 }
 
 

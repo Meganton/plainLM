@@ -1,16 +1,16 @@
 #!/bin/bash
 #SBATCH --account=hk-project-p0023364
-#SBATCH --job-name=GridSearch_full
+#SBATCH --job-name=short_46
 #SBATCH --error=/scratch/slurm_tmpdir/%x/job_%j/%x_%a.err
 #SBATCH --output=/scratch/slurm_tmpdir/%x/job_%j/%x_%a.out
-#SBATCH --time=26:00:00
-#SBATCH --gres=gpu:4
-#SBATCH --cpus-per-task=32
+#SBATCH --time=01:50:00
+#SBATCH --gres=gpu:2
+#SBATCH --cpus-per-task=16
 #SBATCH --partition=accelerated
-#SBATCH --array=0-4
+#SBATCH --array=0-0
 
-# Auto-detect number of GPUs from SLURM allocation (default to 4)
-nproc_per_node=${SLURM_GPUS_PER_NODE:-4}
+# Auto-detect number of GPUs from SLURM allocation (default to 2)
+nproc_per_node=${SLURM_GPUS_PER_NODE:-2}
 
 # Create _log directory
 mkdir -p neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/${SLURM_ARRAY_TASK_ID}
@@ -21,13 +21,13 @@ source neps_cluster_scripts/utils/neps_tmpdir_wrapper.sh
 
 # Job parameters
 seed=$((SLURM_ARRAY_TASK_ID))
-neps_optimizer="GridSearch"                   # the NEPS algorithm to use
-model_size="8M"
-result_dir="neps_runs/grid_search"
-runname="grid_search_full"    # used as results_dir/neps/runname/... for neps files and as results_dir/results/runname_seed.json for the results file
-# runtime=20                                  # ca the runtime in minutes + some overhead
-evaluations=576                             # total number of evaluations to run, gets multiplied with max_fidelity
-neps_space_config="SmallAdam_f_nl_nw"          # the NOS space to search over
+neps_optimizer="RS"                   # the NEPS algorithm to use
+model_size="46M"
+result_dir="neps_runs/tests/short_46"
+runname="short_46"    # used as results_dir/neps/runname/... for neps files and as results_dir/results/runname_seed.json for the results file
+runtime=10                                  # ca the runtime in minutes + some overhead
+# evaluations=576                             # total number of evaluations to run, gets multiplied with max_fidelity
+neps_space_config="NLinesU_nf_l_nw"          # the NOS space to search over
 # warmstarter="SGDM_inter"
 neps_mode="overwrite"                          # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
 
@@ -35,18 +35,19 @@ echo "Running NEPS with optimizer: $neps_optimizer, model size: $model_size, see
 
 start_time=$(date +%s)
 
-NUM_FILES=10 run_neps_with_tmpdir \
+NUM_FILES=20 run_neps_with_tmpdir \
     --seed $seed \
     --neps_optimizer $neps_optimizer \
     --model_size $model_size \
     --result_dir $result_dir \
-    --evaluations $evaluations \
     --neps_space_config $neps_space_config \
     --nproc_per_node $nproc_per_node \
     --neps_mode $neps_mode \
     --runname $runname \
-    # --runtime $runtime \
+    --runtime $runtime \
     # --warmstarter $warmstarter
+    # --evaluations $evaluations \
+
 
 
 

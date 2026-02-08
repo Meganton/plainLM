@@ -337,7 +337,7 @@ if __name__ == "__main__":
     parser.add_argument("--neps_optimizer", type=str, default="RE", help="The neps optimizer to use.")
     parser.add_argument("--seed", type=int, default=0, help="Seed.")
     parser.add_argument("--warmstarter", type=str, default=None, help="Warmstarter configuration to use.")
-    parser.add_argument("--neps_mode", type=str, default="normal", choices=["normal", "continuation", "overwrite"], help="NEPS run mode: 'normal' (default), 'continuation' (resume previous run, so no warmstarting), 'overwrite' (delete and restart).")
+    parser.add_argument("--neps_mode", type=str, default="normal", choices=["normal", "continuation", "overwrite", "results"], help="NEPS run mode: 'normal' (default), 'continuation' (resume previous run, so no warmstarting), 'overwrite' (delete and restart), 'results' (skip NEPS and extract results from existing run).")
     parser.add_argument("--lr_mode", type=str, default="normal", choices=["normal", "sweep"], help="Learning rate mode: 'normal' (default) or 'sweep'.")
     # parser.add_argument("--fidelity_mode", type=str, default="steps", choices=["steps", "model_size"], help="Fidelity mode to use: 'steps' or 'model_size'.")
     parser.add_argument("--nproc_per_node", type=int, default=1, help="Number of processes per node (1=single process, >1=distributed with torchrun).")
@@ -369,7 +369,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
     
-    if args.warmstarter is not None and args.neps_mode != "continuation":
+    if args.warmstarter is not None and args.neps_mode not in ["continuation", "results"]:
         print(f"\nUsing warmstart configuration: {args.warmstarter}\n")
         warmstart_name, warmstart_kwargs = resolve_warmstarter_name(args.warmstarter)
         # Resolve fidelity value: "min" -> min_fidelity, "max" -> max_fidelity, or use the number directly
@@ -405,22 +405,25 @@ if __name__ == "__main__":
         print("Previous total cost:", sum(cost_history))
         if fidelity_history:
             print("Previous total fidelity:", sum(fidelity_history))
-        
-    try:
-        print("\nStarting NEPS run\n")
-        neps.run(
-            evaluate_pipeline = evaluate_pipeline,
-            pipeline_space = pipeline_space,
-            overwrite_root_directory=(args.neps_mode == "overwrite" and args.warmstarter is None),
-            root_directory=neps_dir,
-            optimizer = (optimizer_base_name, optimizer_kwargs),
-            cost_to_spend = args.runtime,
-            fidelities_to_spend = args.evaluations*max_fidelity if args.evaluations is not None else None,
-        )
-        print("\nRun complete. Collecting results.")
-    except Exception as e:
-        print(f"NEPS run interrupted:\n{e}")
-        print("Saving results before exiting.")
+    
+    if args.neps_mode == "results":
+        print("\nRunning in 'results' mode: skipping NEPS execution and extracting results from existing run")
+    else:
+        try:
+            print("\nStarting NEPS run\n")
+            neps.run(
+                evaluate_pipeline = evaluate_pipeline,
+                pipeline_space = pipeline_space,
+                overwrite_root_directory=(args.neps_mode == "overwrite" and args.warmstarter is None),
+                root_directory=neps_dir,
+                optimizer = (optimizer_base_name, optimizer_kwargs),
+                cost_to_spend = args.runtime,
+                fidelities_to_spend = args.evaluations*max_fidelity if args.evaluations is not None else None,
+            )
+            print("\nRun complete. Collecting results.")
+        except Exception as e:
+            print(f"NEPS run interrupted:\n{e}")
+            print("Saving results before exiting.")
 
     # Collect and process results
     result = process_neps_status(neps_dir)

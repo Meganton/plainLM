@@ -421,13 +421,19 @@ def plot_results(
             assert (
                 evaluation_cost is not None
             ), "evaluation_cost must be provided when x_axis is 'Evaluations'"
-            all_data = all_data.reindex(np.array(all_data.index.values) / evaluation_cost)
+            if max_fidelity is None:
+                all_data = all_data.reindex(np.array(all_data.index.values) / evaluation_cost)
+            else:
+                all_data = all_data.reindex(np.array(all_data.index.values) / max_fidelity)
         elif x_axis == "Fidelities":
-            assert fidelity_cost is not None and max_fidelity is not None, (
+            assert fidelity_cost is not None or max_fidelity is not None, (
                 "fidelity_cost and max_fidelity must be provided when x_axis is"
                 " 'Fidelities'"
             )
-            all_data = all_data.reindex(np.array(all_data.index.values) / fidelity_cost)
+            if max_fidelity is not None:
+                all_data = all_data.reindex(np.array(all_data.index.values) / max_fidelity)
+            else:
+                all_data = all_data.reindex(np.array(all_data.index.values) / fidelity_cost)
     for group, group_df in all_results.items():
         for seed, df in group_df.items():
             all_data[str(group) + " - " + str(seed)] = (

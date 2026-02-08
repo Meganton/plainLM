@@ -49,6 +49,8 @@ copy_code_to_tmpdir() {
 run_neps_with_tmpdir() {
     # Parse optional NUM_FILES from environment or use default (10 files = ~5GB, up to 6K steps)
     local num_files=${NUM_FILES:-10}
+    local sync_interval=${SYNC_INTERVAL:-2}  # Default: 2 minutes
+    local sync_interval_seconds=$((sync_interval * 60))  # Convert to seconds
     local skip_copy=${SKIP_TMPDIR_COPY:-false}
     
     # Get the project root (for comparison later)
@@ -85,6 +87,34 @@ run_neps_with_tmpdir() {
     
     echo "Running NEPS from \$TMPDIR to minimize HOME filesystem metadata operations..."
     
+    # Start periodic sync in background
+    echo "Starting periodic sync (every ${sync_interval} min) for logs and NEPS results..."
+    (
+        while true; do
+            sleep $sync_interval_seconds
+            
+            # Sync SLURM logs from TMPDIR to HOME
+            if [ -d "$TMPDIR/logs" ]; then
+                mkdir -p "$project_root/neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/"
+                rsync -a --whole-file "$TMPDIR/logs/" "$project_root/neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/" 2>/dev/null || true
+            fi
+            
+            # Sync NEPS results from TMPDIR to HOME
+            if [ -d "$TMPDIR/plainLM/neps_runs" ]; then
+                rsync -a --whole-file "$TMPDIR/plainLM/neps_runs/" "$project_root/neps_runs/" 2>/dev/null || true
+            fi
+            
+            # Log sync timestamp (use task-specific log for array jobs)
+            local sync_log_file="$TMPDIR/logs/sync.log"
+            if [ -n "$SLURM_ARRAY_TASK_ID" ]; then
+                sync_log_file="$TMPDIR/logs/sync_${SLURM_ARRAY_TASK_ID}.log"
+            fi
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Periodic sync completed" >> "$sync_log_file"
+        done
+    ) &
+    SYNC_PID=$!
+    echo "Periodic sync running (PID: $SYNC_PID)"
+    
     # Run NEPS with dataset path overrides
     python -u neps_nos/neps_pipeline.py \
         "$@" \
@@ -93,28 +123,29 @@ run_neps_with_tmpdir() {
     
     local neps_exit_code=$?
     
+    # Kill the periodic sync process
+    echo "Stopping periodic sync..."
+    kill $SYNC_PID 2>/dev/null || true
+    wait $SYNC_PID 2>/dev/null || true
+    
     # Sync results back to HOME (always, even if NEPS had partial failures)
     echo "=============================================="
-    echo "Syncing results back to HOME..."
+    echo "Final sync: copying results and logs back to HOME..."
     echo "=============================================="
+    
+    # Sync NEPS results
     if [ -d "$TMPDIR/plainLM/neps_runs" ]; then
-        # Use --whole-file to avoid block checksums for new files
-        rsync -av --whole-file "$TMPDIR/plainLM/neps_runs/" "$project_root/neps_runs/" || echo "WARNING: rsync of results failed"
-        echo "Results synced to: $project_root/neps_runs/"
+        rsync -av --whole-file "$TMPDIR/plainLM/neps_runs/" "$project_root/neps_runs/" || echo "WARNING: rsync of NEPS results failed"
+        echo "NEPS results synced to: $project_root/neps_runs/"
     else
         echo "No NEPS results found in tmpdir (job may have failed during initialization)"
     fi
     
-    # Sync log files back to HOME (SLURM output now goes to tmpdir)
-    if [ ! -z "$SLURM_JOB_ID" ]; then
-        log_dir="$project_root/neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}"
-        mkdir -p "$log_dir" 2>/dev/null
-        if [ -f "$TMPDIR/${SLURM_JOB_NAME}_$SLURM_ARRAY_TASK_ID.out" ]; then
-            cp "$TMPDIR/${SLURM_JOB_NAME}_$SLURM_ARRAY_TASK_ID.out" "$log_dir/$SLURM_ARRAY_TASK_ID.out" 2>/dev/null
-        fi
-        if [ -f "$TMPDIR/${SLURM_JOB_NAME}_$SLURM_ARRAY_TASK_ID.err" ]; then
-            cp "$TMPDIR/${SLURM_JOB_NAME}_$SLURM_ARRAY_TASK_ID.err" "$log_dir/$SLURM_ARRAY_TASK_ID.err" 2>/dev/null
-        fi
+    # Sync SLURM logs
+    if [ -d "$TMPDIR/logs" ]; then
+        mkdir -p "$project_root/neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/"
+        rsync -av --whole-file "$TMPDIR/logs/" "$project_root/neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/" || echo "WARNING: rsync of logs failed"
+        echo "Logs synced to: $project_root/neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/"
     fi
     
     return $neps_exit_code
