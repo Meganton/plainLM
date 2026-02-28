@@ -1,0 +1,20 @@
+{
+  "loss_history": [
+    Infinity
+  ],
+  "cost_history": [
+    0.77
+  ],
+  "incumbent_history": [
+    Infinity
+  ],
+  "cumulated_cost_history": [
+    0.77
+  ],
+  "fidelity_history": [
+    16
+  ],
+  "cumulated_fidelity_history": [
+    16
+  ]
+}

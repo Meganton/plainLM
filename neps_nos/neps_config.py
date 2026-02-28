@@ -91,6 +91,26 @@ OPTIMIZERS = {
         'inc_takeover_mode': 1,
         'mutation_mode': ('random', 0.8),
     }),
+    'LI1_ratio0.1': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('ratio', 0.1),
+    }),
+    'LI1_ratio0.3': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('ratio', 0.3),
+    }),
+    'LI1_ratio0.5': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('ratio', 0.5),
+    }),
+    'LI1_ratio0.8': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ('ratio', 0.8),
+    }),
     'LI1_fixed1': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,

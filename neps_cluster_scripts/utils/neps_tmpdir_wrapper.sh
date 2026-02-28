@@ -82,6 +82,59 @@ run_neps_with_tmpdir() {
         echo "Skipping tmpdir copy (SKIP_TMPDIR_COPY=true)"
     fi
     
+# Parse arguments to detect overwrite mode and specific neps run directory
+    local result_dir_arg=""
+    local neps_optimizer_arg=""
+    local runname_arg=""
+    local seed_arg=""
+    local neps_mode_arg="normal"  # Default to normal if not specified
+    local args_copy=("$@")
+    
+    for ((i=0; i<${#args_copy[@]}; i++)); do
+        if [[ "${args_copy[$i]}" == "--result_dir" ]]; then
+            result_dir_arg="${args_copy[$((i+1))]}"
+        elif [[ "${args_copy[$i]}" == "--neps_optimizer" ]]; then
+            neps_optimizer_arg="${args_copy[$((i+1))]}"
+        elif [[ "${args_copy[$i]}" == "--seed" ]]; then
+            seed_arg="${args_copy[$((i+1))]}"
+        elif [[ "${args_copy[$i]}" == "--neps_mode" ]]; then
+            neps_mode_arg="${args_copy[$((i+1))]}"
+        elif [[ "${args_copy[$i]}" == "--runname" ]]; then
+            runname_arg="${args_copy[$((i+1))]}"
+        fi
+    done
+    
+    # Prefer runname for path construction (used by SOTA jobs), fall back to neps_optimizer
+    local neps_dir_name="${runname_arg:-${neps_optimizer_arg}}"
+    
+    # If in overwrite mode, delete the specific optimizer/seed directory in HOME to ensure clean state
+    if [ "$neps_mode_arg" == "overwrite" ] && [ -n "$result_dir_arg" ] && [ -n "$neps_dir_name" ] && [ -n "$seed_arg" ]; then
+        local neps_run_dir="$project_root/$result_dir_arg/neps/$neps_dir_name/seed_${seed_arg}"
+        if [ -d "$neps_run_dir" ]; then
+            echo "=============================================="
+            echo "OVERWRITE MODE: Removing existing run directory in HOME"
+            echo "Deleting: $neps_run_dir"
+            echo "=============================================="
+            rm -rf "$neps_run_dir" || { echo "WARNING: Failed to delete $neps_run_dir"; }
+        fi
+    fi
+    
+    # If result_dir exists in HOME, copy ONLY the specific seed directory to TMPDIR for continuation
+    # (skip this for overwrite mode since we just deleted it)
+    if [ "$neps_mode_arg" != "overwrite" ] && [ -n "$result_dir_arg" ] && [ -n "$neps_dir_name" ] && [ -n "$seed_arg" ]; then
+        local neps_seed_dir="$project_root/$result_dir_arg/neps/$neps_dir_name/seed_${seed_arg}"
+        if [ -d "$neps_seed_dir" ]; then
+            echo "=============================================="
+            echo "Copying existing NEPS seed directory to \$TMPDIR for continuation..."
+            echo "$neps_seed_dir -> $TMPDIR/plainLM/$result_dir_arg/neps/$neps_dir_name/seed_${seed_arg}/"
+            echo "=============================================="
+            mkdir -p "$TMPDIR/plainLM/$result_dir_arg/neps/$neps_dir_name"
+            rsync -a "$neps_seed_dir/" "$TMPDIR/plainLM/$result_dir_arg/neps/$neps_dir_name/seed_${seed_arg}/" || { echo "ERROR: Failed to copy existing neps seed"; return 1; }
+            echo "Existing NEPS seed copied to \$TMPDIR"
+            echo "=============================================="
+        fi
+    fi
+
     # Change to tmpdir and run NEPS from there
     cd "$TMPDIR/plainLM" || return 1
     
@@ -99,9 +152,22 @@ run_neps_with_tmpdir() {
                 rsync -a --whole-file "$TMPDIR/logs/" "$project_root/neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/" 2>/dev/null || true
             fi
             
-            # Sync NEPS results from TMPDIR to HOME
-            if [ -d "$TMPDIR/plainLM/neps_runs" ]; then
-                rsync -a --whole-file "$TMPDIR/plainLM/neps_runs/" "$project_root/neps_runs/" 2>/dev/null || true
+            # Sync ONLY this specific optimizer/seed's NEPS results from TMPDIR to HOME
+            if [ -n "$neps_dir_name" ] && [ -n "$seed_arg" ]; then
+                local neps_seed_srcdir="$TMPDIR/plainLM/neps_runs/46_LI_space/neps/$neps_dir_name/seed_${seed_arg}"
+                local neps_seed_dstdir="$project_root/neps_runs/46_LI_space/neps/$neps_dir_name/seed_${seed_arg}"
+                if [ -d "$neps_seed_srcdir" ]; then
+                    mkdir -p "$neps_seed_dstdir"
+                    rsync -a --whole-file "$neps_seed_srcdir/" "$neps_seed_dstdir/" 2>/dev/null || true
+                fi
+                
+                # Also sync the result JSON file for this seed
+                local result_json_src="$TMPDIR/plainLM/neps_runs/46_LI_space/results/${neps_dir_name}_${seed_arg}.json"
+                local result_json_dst="$project_root/neps_runs/46_LI_space/results/${neps_dir_name}_${seed_arg}.json"
+                if [ -f "$result_json_src" ]; then
+                    mkdir -p "$(dirname "$result_json_dst")"
+                    rsync -a --whole-file "$result_json_src" "$result_json_dst" 2>/dev/null || true
+                fi
             fi
             
             # Log sync timestamp (use task-specific log for array jobs)
@@ -133,12 +199,30 @@ run_neps_with_tmpdir() {
     echo "Final sync: copying results and logs back to HOME..."
     echo "=============================================="
     
-    # Sync NEPS results
-    if [ -d "$TMPDIR/plainLM/neps_runs" ]; then
-        rsync -av --whole-file "$TMPDIR/plainLM/neps_runs/" "$project_root/neps_runs/" || echo "WARNING: rsync of NEPS results failed"
-        echo "NEPS results synced to: $project_root/neps_runs/"
+    # Sync ONLY this specific optimizer/seed's NEPS results
+    if [ -n "$neps_dir_name" ] && [ -n "$seed_arg" ]; then
+        local neps_seed_srcdir="$TMPDIR/plainLM/neps_runs/46_LI_space/neps/$neps_dir_name/seed_${seed_arg}"
+        local neps_seed_dstdir="$project_root/neps_runs/46_LI_space/neps/$neps_dir_name/seed_${seed_arg}"
+        if [ -d "$neps_seed_srcdir" ]; then
+            mkdir -p "$neps_seed_dstdir"
+            rsync -av --whole-file "$neps_seed_srcdir/" "$neps_seed_dstdir/" || echo "WARNING: rsync of NEPS seed results failed"
+            echo "NEPS results for $neps_dir_name seed_$seed_arg synced to: $neps_seed_dstdir"
+        fi
+        
+        # Sync the result JSON file
+        local result_json_src="$TMPDIR/plainLM/neps_runs/46_LI_space/results/${neps_dir_name}_${seed_arg}.json"
+        local result_json_dst="$project_root/neps_runs/46_LI_space/results/${neps_dir_name}_${seed_arg}.json"
+        if [ -f "$result_json_src" ]; then
+            mkdir -p "$(dirname "$result_json_dst")"
+            rsync -av --whole-file "$result_json_src" "$result_json_dst" || echo "WARNING: rsync of result JSON failed"
+            echo "Result JSON for $neps_dir_name seed_$seed_arg synced to: $result_json_dst"
+        fi
     else
-        echo "No NEPS results found in tmpdir (job may have failed during initialization)"
+        echo "WARNING: Could not parse neps_optimizer and seed arguments, falling back to full sync"
+        if [ -d "$TMPDIR/plainLM/neps_runs" ]; then
+            rsync -av --whole-file "$TMPDIR/plainLM/neps_runs/" "$project_root/neps_runs/" || echo "WARNING: rsync of NEPS results failed"
+            echo "NEPS results synced to: $project_root/neps_runs/"
+        fi
     fi
     
     # Sync SLURM logs

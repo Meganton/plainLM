@@ -30,7 +30,7 @@ runtime=1100                                  # ca the runtime in minutes + some
 # evaluations=576                             # total number of evaluations to run, gets multiplied with max_fidelity
 neps_space_config="NLinesU_f_l_nw"          # the NOS space to search over
 # warmstarter="SGDM_inter"
-neps_mode="normal"                          # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
+neps_mode="overwrite"                        # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
 
 echo "Running NEPS with optimizer: $neps_optimizer, model size: $model_size, seed: $SLURM_ARRAY_TASK_ID"
 

@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --account=hk-project-p0023364
-#SBATCH --job-name=li1_03_fixed_lr
+#SBATCH --job-name=li1_ratio_01
 #SBATCH --output=/scratch/slurm_tmpdir/job_%j/logs/%a.out
 #SBATCH --error=/scratch/slurm_tmpdir/job_%j/logs/%a.err
-#SBATCH --time=27:00:00
+#SBATCH --time=20:00:00
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=32
 #SBATCH --partition=accelerated
-#SBATCH --array=0-2
+#SBATCH --array=1
 
 # Create log directory in TMPDIR first (SLURM writes logs here)
 mkdir -p ${TMPDIR}/logs/
@@ -23,30 +23,28 @@ source ./.venv/bin/activate
 source neps_cluster_scripts/utils/neps_tmpdir_wrapper.sh
 
 # Job parameters
-seed=$((SLURM_ARRAY_TASK_ID))
-neps_optimizer="LI1_r0.3"                   # the NEPS algorithm to use
+neps_optimizer="LI1_ratio0.1"                   # the NEPS algorithm to use
 model_size="46M"
 result_dir="neps_runs/46_LI_space"
-runname="li1_03_fixed_lr"    # used as results_dir/neps/runname/... for neps files and as results_dir/results/runname_seed.json for the results file
-runtime=1500                                  # ca the runtime in minutes + some overhead
+runtime=1100                                  # ca the runtime in minutes + some overhead
 # evaluations=576                             # total number of evaluations to run, gets multiplied with max_fidelity
-neps_space_config="NLinesU_f_nl_nw"          # the NOS space to search over
+neps_space_config="NLinesU_f_l_nw"          # the NOS space to search over
 # warmstarter="SGDM_inter"
-neps_mode="continuation"                          # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
+neps_mode="overwrite"                       # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
 
-echo "Running NEPS with optimizer: $neps_optimizer, model size: $model_size, seed: $seed"
+echo "Running NEPS with optimizer: $neps_optimizer, model size: $model_size, seed: $SLURM_ARRAY_TASK_ID"
 
 start_time=$(date +%s)
 
 NUM_FILES=20 SYNC_INTERVAL=2 run_neps_with_tmpdir \
-    --seed $seed \
+    --seed $SLURM_ARRAY_TASK_ID \
     --neps_optimizer $neps_optimizer \
     --model_size $model_size \
     --result_dir $result_dir \
     --neps_space_config $neps_space_config \
     --nproc_per_node $nproc_per_node \
     --neps_mode $neps_mode \
-    --runname $runname \
+    --runname $SLURM_JOB_NAME \
     --runtime $runtime \
     # --warmstarter $warmstarter
     # --evaluations $evaluations \
