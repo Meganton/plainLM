@@ -74,62 +74,74 @@ OPTIMIZERS = {
     'LI1_rand0.1': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('random', 0.1),
+        'mutation_mode': ['random', 0.1],
     }),
     'LI1_rand0.3': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('random', 0.3),
+        'mutation_mode': ['random', 0.3],
     }),
     'LI1_rand0.5': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('random', 0.5),
+        'mutation_mode': ['random', 0.5],
     }),
     'LI1_rand0.8': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('random', 0.8),
+        'mutation_mode': ['random', 0.8],
     }),
     'LI1_ratio0.1': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('ratio', 0.1),
+        'mutation_mode': ['ratio', 0.1],
     }),
     'LI1_ratio0.3': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('ratio', 0.3),
+        'mutation_mode': ['ratio', 0.3],
     }),
     'LI1_ratio0.5': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('ratio', 0.5),
+        'mutation_mode': ['ratio', 0.5],
     }),
     'LI1_ratio0.8': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('ratio', 0.8),
+        'mutation_mode': ['ratio', 0.8],
     }),
     'LI1_fixed1': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('fixed', 1),
+        'mutation_mode': ['fixed', 1],
     }),
     'LI1_fixed3': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('fixed', 3),
+        'mutation_mode': ['fixed', 3],
     }),
     'LI1_fixed5': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('fixed', 5),
+        'mutation_mode': ['fixed', 5],
     }),
     'LI1_fixed8': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'inc_takeover_mode': 1,
-        'mutation_mode': ('fixed', 8),
+        'mutation_mode': ['fixed', 8],
+    }),
+    'LI1_rand0.1r1': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ['random', 0.1],
+        'random_ratio': 0.1
+    }),
+    'LI1_rand0.1r3': ("neps_local_and_incumbent", {
+        'base': 'hyperband',
+        'inc_takeover_mode': 1,
+        'mutation_mode': ['random', 0.1],
+        'random_ratio': 0.3
     }),
 }
 
@@ -155,6 +167,11 @@ SPACES = {
         ("AdamExtend_1_6",
         {"learning_rate": (1e-5, 1e-1),
         "fidelity": True}),
+    "AdamExtend_f_l_w":
+        ("AdamExtend_1_6",
+        {"learning_rate": (1e-5, 1e-1),
+        "weight_decay": (1e-6, 2e-1),
+        "fidelity": True}),
     "AdamExtendMul_f_l_nw": 
         ("AdamExtend_1_6_mul",
         {"learning_rate": (1e-5, 1e-1),
@@ -169,14 +186,39 @@ SPACES = {
     "SmallAdam_f_nl_nw":
         ("SmallAdam",
         {"fidelity": True}),
+    "AdamMore":
+        ("AdamWMore",
+        {"learning_rate": (1e-5, 1e-1),
+        "weight_decay": (1e-6, 2e-1),
+        "fidelity": True}),
+    "AdamMore1":
+        ("AdamWMore1",
+        {"learning_rate": (1e-5, 1e-1),
+        "weight_decay": (1e-6, 2e-1),
+        "fidelity": True}),
+    "AdamMore2":
+        ("AdamWMore2",
+        {"learning_rate": (1e-5, 1e-1),
+        "weight_decay": (1e-6, 2e-1),
+        "fidelity": True}),
+    "AdamMore3":
+        ("AdamWMore3",
+        {"learning_rate": (1e-5, 1e-1),
+        "weight_decay": (1e-6, 2e-1),
+        "fidelity": True}),
 }
 
 SPACE_BASES = {
     "NLinesU_1_10": partial(neps_nos_space.NOSSpaceNLinesU, n_lines=(1,10)),
     "AdamExtend_1_6": partial(neps_nos_space.AdamWExtend, n_lines=(1,6)),
     "AdamExtend_1_6_mul": partial(neps_nos_space.AdamWExtend, n_lines=(1,6), term_mode="mul"),
+    "AdamWMore": partial(neps_nos_space.AdamWMore, n_lines=(1,6)),
     "PremadeModules": neps_nos_space.PremadeModules,
     "SmallAdam": neps_nos_space.SmallAdamMul,
+    "AdamWMore1": partial(neps_nos_space.AdamWMore, special_variables=("t",), n_lines=(1,6)),
+    "AdamWMore2": partial(neps_nos_space.AdamWMore, special_variables=("depth",), n_lines=(1,6)),
+    "AdamWMore3": partial(neps_nos_space.AdamWMore, special_variables=("layer_type_attention",), n_lines=(1,6)),
+
 }
 
 WARMSTART_PARAMETERS_DEFAULTS = {

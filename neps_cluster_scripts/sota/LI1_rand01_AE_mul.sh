@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=32
 #SBATCH --partition=accelerated
-#SBATCH --array=0-4
+#SBATCH --array=0,2,4
 
 # Create log directory in TMPDIR first (SLURM writes logs here)
 mkdir -p ${TMPDIR}/logs/
@@ -30,7 +30,7 @@ runtime=2700                                  # ca the runtime in minutes + some
 # evaluations=576                             # total number of evaluations to run, gets multiplied with max_fidelity
 neps_space_config="AdamExtendMul_f_l_nw"          # the NOS space to search over
 # warmstarter="SGDM_inter"
-neps_mode="normal"                             # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
+neps_mode="continuation"                             # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
 
 echo "Running NEPS with optimizer: $neps_optimizer, model size: $model_size, seed: $SLURM_ARRAY_TASK_ID"
 

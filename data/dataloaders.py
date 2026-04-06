@@ -11,6 +11,14 @@ from data.datasamplers import (
 )
 
 
+def _collate_fn(batch):
+  """Collate for intra-document masking (docs_lengths column present)."""
+  return {
+    "input_ids": torch.stack([x["input_ids"] for x in batch], dim=0),
+    "docs_lengths": [x["docs_lengths"].tolist() for x in batch],
+  }
+
+
 def get_dataloaders(cfg):
   """Load trainset and perhaps validset. Returns correspondent DataLoaders."""
 
@@ -20,13 +28,6 @@ def get_dataloaders(cfg):
 
   train_sampler = _get_sampler(train_set, cfg)
 
-  # only used with intra-document masking
-  def collate_fn(batch):
-    return {
-      "input_ids": torch.stack([x["input_ids"] for x in batch], dim=0),
-      "docs_lengths": [x["docs_lengths"].tolist() for x in batch],
-    }
-
   trainloader = DataLoader(
     train_set,
     sampler=train_sampler,
@@ -35,7 +36,7 @@ def get_dataloaders(cfg):
     pin_memory=True,
     prefetch_factor=2 if cfg.num_workers > 0 else None,
     persistent_workers=True if cfg.num_workers > 0 else False,
-    collate_fn=collate_fn if "docs_lengths" in train_set.column_names else None,
+    collate_fn=_collate_fn if "docs_lengths" in train_set.column_names else None,
   )
 
   if not cfg.validset_path:
@@ -64,7 +65,7 @@ def get_dataloaders(cfg):
       pin_memory=True,
       prefetch_factor=2 if cfg.num_workers > 0 else None,
       persistent_workers=False,
-      collate_fn=collate_fn if "docs_lengths" in train_set.column_names else None,
+      collate_fn=_collate_fn if "docs_lengths" in train_set.column_names else None,
     )
 
   return trainloader, validloader

@@ -8,7 +8,7 @@ __pycache__/
 # Ignore virtual environment directories
 venv/
 env/
-.venv/
+.venv
 .env/
 
 # Ignore lock files
@@ -60,3 +60,6 @@ neps_nos/old/
 neps_nos/tests/
 neps_cluster_scripts/old/
 neps_cluster_scripts/tests/
+
+# ml experiments
+opt-search/

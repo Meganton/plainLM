@@ -144,6 +144,13 @@ class TorchEngine(torch.nn.Module):
 
       # step the optimizers, flush the grads
       for n, optim in self.optimizers.items():
+        total_epochs = float(getattr(optim, "_nos_total_epochs", max(self.steps, 1)))
+        if total_epochs <= 0:
+          total_epochs = 1.0
+        # t is normalized progress x / max_epoch as requested.
+        setattr(optim, "_nos_t", float(self.steps) / total_epochs)
+        # Keep raw total for potential future symbols.
+        setattr(optim, "_nos_total_epochs", total_epochs)
         optim.step()
         optim.zero_grad(set_to_none=True)
 

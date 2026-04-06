@@ -17,7 +17,7 @@
 
 # Activate environment
 cd ~/plainLM
-source .venv/bin/activate
+source .venvbin/activate
 
 # Hyperparmeters are specified in a YAML configuration file
 config=config/dev/debug.yaml

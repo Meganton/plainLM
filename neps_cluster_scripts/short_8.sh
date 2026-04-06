@@ -1,18 +1,19 @@
 #!/bin/bash
 #SBATCH --account=hk-project-p0023364
-#SBATCH --job-name=short_8_v2
-#SBATCH --output=/scratch/slurm_tmpdir/job_%j/logs/%a.out
-#SBATCH --error=/scratch/slurm_tmpdir/job_%j/logs/%a.err
-#SBATCH --time=00:15:00
+#SBATCH --job-name=short_8_v4
+#SBATCH --output=neps_runs/_log/%x/%A/%a.out
+#SBATCH --error=neps_runs/_log/%x/%A/%a.err
+#SBATCH --time=00:30:00
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=16
 #SBATCH --partition=accelerated
-#SBATCH --array=0-1
+#SBATCH --array=0-0
 
 # Create log directory in TMPDIR first (SLURM writes logs here)
 mkdir -p ${TMPDIR}/logs/
 
-# Auto-detect number of GPUs from SLURM allocation (default to 2)
+# Auto-detect number of GPUs from SLURM allocation (default to 1 for this test)
+echo "Detected $SLURM_GPUS_PER_NODE GPUs per Node"
 nproc_per_node=${SLURM_GPUS_PER_NODE:-2}
 
 # Create log directory in HOME (periodic sync destination)
@@ -25,10 +26,10 @@ source neps_cluster_scripts/utils/neps_tmpdir_wrapper.sh
 # Job parameters
 neps_optimizer="RS"                   # the NEPS algorithm to use
 model_size="8M"
-result_dir="neps_runs/tests/short_8_v2"
-runtime=2                                  # runtime in minutes (SLURM 15 min - 2 min overhead = 13 min available)
+result_dir="neps_runs/tests/short_8_v4"
+runtime=20                                  # runtime in minutes (SLURM 10 min - 2 min overhead = 8 min available)
 # evaluations=576                             # total number of evaluations to run, gets multiplied with max_fidelity
-neps_space_config="NLinesU_nf_l_nw"          # the NOS space to search over
+neps_space_config="AdamMore"          # the NOS space to search over
 # warmstarter="SGDM_inter"
 neps_mode="overwrite"                             # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
 

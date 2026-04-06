@@ -1,19 +1,22 @@
 #!/bin/bash
 #SBATCH --account=hk-project-p0023364
 #SBATCH --job-name=short_46
-#SBATCH --error=/scratch/slurm_tmpdir/%x/job_%j/%x_%a.err
-#SBATCH --output=/scratch/slurm_tmpdir/%x/job_%j/%x_%a.out
+#SBATCH --output=/scratch/slurm_tmpdir/job_%j/logs/%a.out
+#SBATCH --error=/scratch/slurm_tmpdir/job_%j/logs/%a.err
 #SBATCH --time=01:50:00
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=16
 #SBATCH --partition=accelerated
 #SBATCH --array=0-0
 
+# Create log directory in TMPDIR first (SLURM writes logs here)
+mkdir -p ${TMPDIR}/logs/
+
 # Auto-detect number of GPUs from SLURM allocation (default to 2)
 nproc_per_node=${SLURM_GPUS_PER_NODE:-2}
 
-# Create _log directory
-mkdir -p neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/${SLURM_ARRAY_TASK_ID}
+# Create log directory in HOME (periodic sync destination)
+mkdir -p neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/
 
 # Activate environment and Load the TMPDIR wrapper functions
 source ./.venv/bin/activate

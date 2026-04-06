@@ -6,7 +6,7 @@
 
 mkdir -p "~/tmp"
 cd ~/plainLM
-source .venv/bin/activate
+source .venvbin/activate
 
 
 PYTHONPATH=. python data/datasets/prepare.py \

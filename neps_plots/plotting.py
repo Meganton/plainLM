@@ -179,13 +179,13 @@ def right_hand_legend(
             matchpath = MPath(verts, codes)
             patch = patches.PathPatch(matchpath, facecolor='none', edgecolor=color, 
                                      linewidth=line_width, linestyle=linestyle, 
-                                     alpha=0.7, clip_on=False)
+                                     alpha=1.0, clip_on=False)
             ax.add_patch(patch)
         elif line_style == "straight":
             # Straight line
             ax.plot([x_max, x_label_end], [final_pos, label_pos],
                    linestyle=linestyle, linewidth=line_width, color=color,
-                   clip_on=False, alpha=0.7)
+                   clip_on=False, alpha=1.0)
         
         # Draw label text
         text_color = group_styles.get(group, {}).get("text_color", "black")
@@ -228,9 +228,12 @@ def _style_plot(
     plot_type: Literal["loss", "ranks"] = "loss"
 ):
     style_dict = {**STYLE_DICT_DEFAULT, **style_dict}
-    ax.set_title(style_dict.get("title", ""), fontsize=style_dict.get("title_fontsize", 16))
-    ax.set_ylabel(style_dict.get("y_label", ""), fontsize=style_dict.get("y_label_fontsize", 14))
-    ax.set_xlabel(style_dict.get("x_label", ""), fontsize=style_dict.get("x_label_fontsize", 14))
+    if style_dict.get("title"):
+        ax.set_title(style_dict.get("title", ""), fontsize=style_dict.get("title_fontsize", 16))
+    if style_dict.get("y_label"):
+        ax.set_ylabel(style_dict.get("y_label", ""), fontsize=style_dict.get("y_label_fontsize", 14))
+    if style_dict.get("x_label"):
+        ax.set_xlabel(style_dict.get("x_label", ""), fontsize=style_dict.get("x_label_fontsize", 14))
     ax.set_xscale(style_dict.get("x_scale", "linear"))
     ax.set_yscale(style_dict.get("y_scale", "linear"))
     sns.despine(ax=ax)
@@ -478,18 +481,47 @@ def plot_results(
     final_positions = {}  # Track final y-position for each group
     
     for group, data in plot_data.items():
-        if style_dict["x_limit_left"] is not None:
-            data["mean"] = data["mean"][data["mean"].index >= style_dict["x_limit_left"]]
-            data["sem"] = data["sem"][data["sem"].index >= style_dict["x_limit_left"]]
-        if style_dict["x_limit_right"] is not None:
-            data["mean"] = data["mean"][data["mean"].index <= style_dict["x_limit_right"]]
-            data["sem"] = data["sem"][data["sem"].index <= style_dict["x_limit_right"]]
+        mean_series = data["mean"].copy()
+        sem_series = data["sem"].copy()
+
+        x_limit_left = style_dict["x_limit_left"]
+        x_limit_right = style_dict["x_limit_right"]
+
+        # If clipping on the left would remove the segment crossing x_limit_left,
+        # insert a boundary point with the last value from the lower-x side.
+        if x_limit_left is not None:
+            has_lower = (mean_series.index < x_limit_left).any()
+            has_upper_or_equal = (mean_series.index >= x_limit_left).any()
+            if has_lower and has_upper_or_equal and x_limit_left not in mean_series.index:
+                left_source_idx = mean_series.index[mean_series.index < x_limit_left][-1]
+                mean_series.loc[x_limit_left] = mean_series.loc[left_source_idx]
+                sem_series.loc[x_limit_left] = sem_series.loc[left_source_idx]
+
+        # If clipping on the right would remove the segment crossing x_limit_right,
+        # insert a boundary point with the last value from the lower-x side.
+        if x_limit_right is not None:
+            has_upper = (mean_series.index > x_limit_right).any()
+            has_lower_or_equal = (mean_series.index <= x_limit_right).any()
+            if has_upper and has_lower_or_equal and x_limit_right not in mean_series.index:
+                right_source_idx = mean_series.index[mean_series.index <= x_limit_right][-1]
+                mean_series.loc[x_limit_right] = mean_series.loc[right_source_idx]
+                sem_series.loc[x_limit_right] = sem_series.loc[right_source_idx]
+
+        mean_series = mean_series.sort_index()
+        sem_series = sem_series.sort_index()
+
+        if x_limit_left is not None:
+            mean_series = mean_series[mean_series.index >= x_limit_left]
+            sem_series = sem_series[sem_series.index >= x_limit_left]
+        if x_limit_right is not None:
+            mean_series = mean_series[mean_series.index <= x_limit_right]
+            sem_series = sem_series[sem_series.index <= x_limit_right]
 
         # Only plot from the first non-nan value to the last non-nan value
-        first_valid_index = data["mean"].first_valid_index()
-        last_valid_index = data["mean"].last_valid_index()
-        mean = data["mean"].loc[first_valid_index:last_valid_index]
-        sem = data["sem"].loc[first_valid_index:last_valid_index]
+        first_valid_index = mean_series.first_valid_index()
+        last_valid_index = mean_series.last_valid_index()
+        mean = mean_series.loc[first_valid_index:last_valid_index]
+        sem = sem_series.loc[first_valid_index:last_valid_index]
 
         ax.step(
             mean.index,

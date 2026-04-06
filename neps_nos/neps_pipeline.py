@@ -7,30 +7,22 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import neps
 import argparse
 import os
-import torch
-import subprocess
 import json
+import socket
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*invalid value encountered in cast.*")
-from typing import Literal
-try:
-    import dill as pickle
-except ImportError:
-    import pickle
-    print("Warning: dill not available, using pickle. This may fail with dynamic optimizer classes.")
-import tempfile
+import subprocess
+import dill
+import torch
 from functools import partial
-from neps_nos.utils.model_train_function import train_model, CFG_PATH_46M, CFG_PATH_8M, CFG_PATH_46M_1D, CFG_PATH_8M_1D
+from neps_nos.utils.model_train_function import CFG_PATH_46M, CFG_PATH_8M
 from neps_nos.neps_config import get_space_basename_and_kwargs, get_space_base_callable, get_optimizer_name_and_kwargs, get_warmstarter_config, resolve_warmstarter_name
 import logging
-from pprint import pprint
 import time
 import numpy as np
 import pandas as pd
 
 model_configs = {
-    "8M_1D": CFG_PATH_8M_1D,
-    "46M_1D": CFG_PATH_46M_1D,
     "8M": CFG_PATH_8M,
     "46M": CFG_PATH_46M,
 }
@@ -115,7 +107,14 @@ def setup_result_directories(args):
     
     return run_directory, results_dir, neps_dir, results_cache_dir, results_filename
 
-def run_distributed_training(
+def _find_free_port() -> int:
+    """Find a free TCP port on localhost."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
+
+
+def run_training(
     optimizer_cls,
     learning_rate: float,
     weight_decay: float,
@@ -123,122 +122,71 @@ def run_distributed_training(
     pipeline_directory: str,
     config_path: str,
     nproc_per_node: int,
-    trainset_path: str = None,  # For $TMPDIR support
-    validset_path: str = None,  # For $TMPDIR support
+    trainset_path=None,
+    validset_path=None,
 ) -> float:
-    """
-    Run distributed training via torchrun subprocess.
-    
-    Args:
-        optimizer_cls: The optimizer class to use
-        learning_rate: Learning rate for training
-        weight_decay: Weight decay for training
-        fidelity: Fidelity level (number of training steps)
-        pipeline_directory: Directory to save checkpoints and logs
-        config_path: Path to the model configuration YAML file
-        nproc_per_node: Number of processes per node
-    
-    Returns:
-        Validation loss value
-    """
-    # Serialize optimizer configuration to a temporary pickle file
-    optimizer_config = {
-        'optimizer_cls': optimizer_cls,
-        'lr': learning_rate,
-        'weight_decay': weight_decay,
+    """Launch distributed training via torchrun and return the validation loss."""
+    pipeline_directory = Path(pipeline_directory)
+    pipeline_directory.mkdir(parents=True, exist_ok=True)
+
+    # Serialize optimizer to a file; torchrun_worker.py deserializes it.
+    opt_file = pipeline_directory / "optimizer.dill"
+    with open(opt_file, 'wb') as f:
+        dill.dump(optimizer_cls, f)
+
+    port = _find_free_port()
+    worker_script = Path(__file__).parent / "utils" / "torchrun_worker.py"
+
+    cmd = [
+        sys.executable, "-m", "torch.distributed.run",
+        "--standalone",
+        f"--nproc_per_node={nproc_per_node}",
+        f"--master_port={port}",
+        str(worker_script),
+        "--opt_path", str(opt_file),
+        "--lr", str(learning_rate),
+        "--weight_decay", str(weight_decay),
+        "--n_steps", str(fidelity),
+        "--pipeline_directory", str(pipeline_directory),
+        "--config_path", str(config_path),
+    ]
+    if trainset_path is not None:
+        cmd += ["--trainset_path", str(trainset_path)]
+    if validset_path is not None:
+        cmd += ["--validset_path", str(validset_path)]
+
+    env = {
+        **os.environ,
+        "PYTHONUNBUFFERED": "1",
+        # Helps reduce allocator fragmentation across repeated trials.
+        "PYTORCH_ALLOC_CONF": "expandable_segments:True",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
     }
-    
-    print(f"[NEPS] Preparing distributed training (nproc={nproc_per_node})")
-    if hasattr(optimizer_cls, '__name__'):
-        optimizer_name = getattr(optimizer_cls, '__name__', str(optimizer_cls))
-    else:
-        optimizer_name = str(optimizer_cls)
-    print(f"[NEPS] Optimizer class: {optimizer_name}")
-    
-    # Create temporary file for optimizer config
-    config_fd, config_file = tempfile.mkstemp(suffix='.pkl', prefix='optimizer_config_')
-    result = None  # Initialize to avoid unbound variable warning
+
     try:
-        with os.fdopen(config_fd, 'wb') as f:
-            pickle.dump(optimizer_config, f)
-        
-        print(f"[NEPS] Serialized optimizer config to: {config_file}")
-        
-        # Set environment variables
-        env = os.environ.copy()
-        env['PYTORCH_ALLOC_CONF'] = 'expandable_segments:True'
-        env['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'  # Legacy name for older PyTorch
-        env['PYTHONUNBUFFERED'] = '1'  # Force unbuffered output
-        
-        cmd = [
-            "torchrun",
-            "--standalone",
-            "--nnodes=1",
-            f"--nproc_per_node={nproc_per_node}",
-            "--redirects", "1:0,2:0,3:0",  # Redirect output from ranks 1,2,3 to rank 0
-            "neps_nos/utils/train_distributed.py",
-            "--optimizer_config_file", config_file,
-            "--n_steps", str(fidelity),
-            "--pipeline_directory", str(pipeline_directory),
-            "--config_path", str(config_path),
-        ]
-        
-        # Add dataset path overrides if provided (for $TMPDIR support)
-        if trainset_path is not None:
-            cmd.extend(["--trainset_path", str(trainset_path)])
-        if validset_path is not None:
-            cmd.extend(["--validset_path", str(validset_path)])
-        
-        print(f"[NEPS] Spawning subprocess: {' '.join(cmd)}")
-        print(f"[NEPS] Launching {nproc_per_node} training processes...")
+        print(f"[NEPS] Launching {nproc_per_node} training processes via torchrun (port {port})...")
         print("-" * 80)
-        # Remove capture_output to allow real-time streaming
-        result = subprocess.run(cmd, check=False, text=True, env=env)
+        result = subprocess.run(cmd, env=env)
         print("-" * 80)
-    finally:
-        # Clean up temporary config file
-        print(f"[NEPS] Cleaning up temporary config file: {config_file}")
-        if os.path.exists(config_file):
-            os.unlink(config_file)
-    
-        if result is None:
-            raise ValueError("Training subprocess was not started properly")
-        elif result.returncode != 0:
-            print(f"[NEPS] Subprocess failed with return code {result.returncode}")
-            # Note: stdout/stderr were streamed in real-time, not captured
-            # Check for result file or assume failure
-            result_file = Path(pipeline_directory) / "valid_loss.json"
-            if result_file.exists():
-                print("[NEPS] Found result file despite non-zero exit code, reading it...")
-                with open(result_file) as f:
-                    data = json.load(f)
-                valid_loss = data["valid_loss"]
-                if not np.isfinite(valid_loss):
-                    print("[NEPS] Training failed due to NaN or inf loss. Returning inf loss.")
-                    valid_loss = np.inf
-            else:
-                print("[NEPS] Training failed and no result file found. Returning inf loss.")
-                valid_loss = np.inf
+
+        result_file = pipeline_directory / "valid_loss.json"
+        if result.returncode != 0 or not result_file.exists():
+            print(f"[NEPS] Training failed (exit code {result.returncode}). Returning inf loss.")
+            valid_loss = float('inf')
         else:
-            # Read result from file written by rank 0
-            result_file = Path(pipeline_directory) / "valid_loss.json"
-            print(f"[NEPS] Reading result from {result_file}")
-            if not result_file.exists():
-                raise ValueError(f"Result file not found: {result_file}")
             with open(result_file) as f:
-                data = json.load(f)
-            valid_loss = data["valid_loss"]
-            print(f"[NEPS] Distributed training completed, validation loss: {valid_loss}")
-            
-        # Clean up GPU memory between trials with delay to allow subprocess cleanup
-        # Force GPU synchronization to ensure all operations complete
+                valid_loss = json.load(f)["valid_loss"]
+            print(f"[NEPS] Training complete. Validation loss: {valid_loss}")
+    finally:
+        opt_file.unlink(missing_ok=True)
         if torch.cuda.is_available():
-            torch.cuda.synchronize()
-            time.sleep(5)  # Increased delay to allow full GPU cleanup
+            # Give elastic workers a moment to fully tear down before next trial.
+            time.sleep(5)
             torch.cuda.empty_cache()
+            if hasattr(torch.cuda, "ipc_collect"):
+                torch.cuda.ipc_collect()
             torch.cuda.reset_peak_memory_stats()
-            print("[NEPS] Cleaned up GPU memory in main process")
-    
+
     return valid_loss
 
 
@@ -248,84 +196,43 @@ def evaluate_pipeline_base(
     learning_rate: float = 0.001,
     weight_decay: float = 0,
     fidelity: int = -1,
-    fidelity_mode: Literal["steps", "model_size"] = "steps",
-    lr_mode: Literal["normal", "sweep"] = "normal",
-    config_path: str = CFG_PATH_8M_1D,
-    nproc_per_node: int = 1,
-    trainset_path: str = None,  # For $TMPDIR support
-    validset_path: str = None,  # For $TMPDIR support
+    config_path: str = CFG_PATH_8M,
+    nproc_per_node: int = 4,
+    trainset_path=None,
+    validset_path=None,
 ):
     """
     Evaluate a configuration by training a model.
-    
-    Args:
-        optimizer_cls: The optimizer class to use
-        pipeline_directory: Directory to save checkpoints and logs
-        learning_rate: Learning rate for training
-        weight_decay: Weight decay for training
-        fidelity: Fidelity level
-        config_path: Path to the model configuration YAML file
-        nproc_per_node: Number of processes per node (1=single process, >1=distributed training)
-    
+
     Returns:
         Dictionary with objective_to_minimize (validation loss) and cost (time in minutes)
     """
-    
     print(f"Training using {pipeline_directory}\nand config {config_path}")
-    print(f"Fidelity: {fidelity}")
-    print(f"Learning Rate: {learning_rate}")
-    print(f"Weight Decay: {weight_decay}")
+    print(f"Fidelity: {fidelity}, LR: {learning_rate}, WD: {weight_decay}")
     x = torch.zeros(1)
     print(f"Optimizer instance:\n{optimizer_cls([x], lr=learning_rate, weight_decay=weight_decay)}")
 
     start_time = time.time()
-
-    if fidelity_mode == "model_size":
-        raise NotImplementedError("Fidelity mode 'model_size' is not implemented yet, as large model does not fit into GPUs")
-    
-    if lr_mode == "sweep":
-        valid_loss = np.inf
-        for lr in [0.002, 0.001, 0.0005, 0.00025]:
-            print(f"Running learning rate sweep with lr={lr}")
-            sweep_valid_loss = run_distributed_training(
-                optimizer_cls=optimizer_cls,
-                learning_rate=lr,
-                weight_decay=weight_decay,
-                fidelity=fidelity,
-                pipeline_directory=pipeline_directory,
-                config_path=config_path,
-                nproc_per_node=nproc_per_node,
-                trainset_path=trainset_path,  # Pass through for $TMPDIR support
-                validset_path=validset_path,  # Pass through for $TMPDIR support
-            )
-            print(f"Learning rate {lr} resulted in validation loss: {sweep_valid_loss}")
-            valid_loss = min(valid_loss, sweep_valid_loss)
-        print(f"Best validation loss from learning rate sweep: {valid_loss}")
-    else:
-        valid_loss = run_distributed_training(
-            optimizer_cls=optimizer_cls,
-            learning_rate=learning_rate,
-            weight_decay=weight_decay,
-            fidelity=fidelity,
-            pipeline_directory=pipeline_directory,
-            config_path=config_path,
-            nproc_per_node=nproc_per_node,
-            trainset_path=trainset_path,  # Pass through for $TMPDIR support
-            validset_path=validset_path,  # Pass through for $TMPDIR support
-        )
-
-    end_time = time.time()
-    total_time = end_time - start_time
-    print(f"Training ended after {time.strftime('%H:%M:%S', time.gmtime(total_time))}.")
-    cost = np.round(total_time/60, 2)  # Cost in minutes rounded to 2 decimal places
-
+    valid_loss = run_training(
+        optimizer_cls=optimizer_cls,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        fidelity=fidelity,
+        pipeline_directory=pipeline_directory,
+        config_path=config_path,
+        nproc_per_node=nproc_per_node,
+        trainset_path=trainset_path,
+        validset_path=validset_path,
+    )
+    cost = np.round((time.time() - start_time) / 60, 2)
+    print(f"Training ended after {time.strftime('%H:%M:%S', time.gmtime(cost * 60))}.")
     return {"objective_to_minimize": valid_loss, "cost": cost}
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NEPS NOS Training Pipeline")
     # Example:  python neps_nos/neps_pipeline.py --result_dir neps_runs/testrun1 --neps_space_config NLinesU_f_l_nw --runtime 1
-    parser.add_argument("--model_size", type=str, default="8M", choices=["8M_1D", "46M_1D", "8M", "46M"], help="Model size to use for training.")
+    parser.add_argument("--model_size", type=str, default="8M", choices=["8M", "46M"], help="Model size to use for training.")
     parser.add_argument("--result_dir", type=str, required=True, help="Directory to save checkpoints and logs.")
     parser.add_argument("--runname", type=str, default=None, help="Unique name to use for neps folder and results file.")
     parser.add_argument("--runtime", type=int, default=None, help="Time budget for the neps run in minutes.")
@@ -338,9 +245,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=0, help="Seed.")
     parser.add_argument("--warmstarter", type=str, default=None, help="Warmstarter configuration to use.")
     parser.add_argument("--neps_mode", type=str, default="normal", choices=["normal", "continuation", "overwrite", "results"], help="NEPS run mode: 'normal' (default), 'continuation' (resume previous run, so no warmstarting), 'overwrite' (delete and restart), 'results' (skip NEPS and extract results from existing run).")
-    parser.add_argument("--lr_mode", type=str, default="normal", choices=["normal", "sweep"], help="Learning rate mode: 'normal' (default) or 'sweep'.")
-    # parser.add_argument("--fidelity_mode", type=str, default="steps", choices=["steps", "model_size"], help="Fidelity mode to use: 'steps' or 'model_size'.")
-    parser.add_argument("--nproc_per_node", type=int, default=1, help="Number of processes per node (1=single process, >1=distributed with torchrun).")
+    parser.add_argument("--nproc_per_node", type=int, default=4, help="Number of GPU processes per node.")
     args = parser.parse_args()
 
     # Setup directories
@@ -349,19 +254,17 @@ if __name__ == "__main__":
     min_fidelity = 3 if "8M" in args.model_size else 10
     max_fidelity = 12 if "8M" in args.model_size else 50
 
-    model_config = model_configs[args.model_size + ("_1D" if args.nproc_per_node == 1 else "")]
+    model_config = model_configs[args.model_size]
     space_base_name, space_kwargs = get_space_basename_and_kwargs(args.neps_space_config)
     if "fidelity" in space_kwargs and space_kwargs["fidelity"] is True:
         space_kwargs["fidelity"] = (min_fidelity, max_fidelity)# if args.fidelity_mode == "steps" else (1, 2)
     pipeline_space = get_space_base_callable(space_base_name)(**space_kwargs)
     evaluate_pipeline = partial(
-        evaluate_pipeline_base, 
-        config_path=model_config, 
+        evaluate_pipeline_base,
+        config_path=model_config,
         nproc_per_node=args.nproc_per_node,
-        fidelity_mode="steps",
-        lr_mode=args.lr_mode,
-        trainset_path=args.trainset_path,  # Pass through for $TMPDIR support
-        validset_path=args.validset_path,  # Pass through for $TMPDIR support
+        trainset_path=args.trainset_path,
+        validset_path=args.validset_path,
     )
     optimizer_base_name, optimizer_kwargs = get_optimizer_name_and_kwargs(args.neps_optimizer)
     print("Pipeline space:\n", space_base_name, "\n", space_kwargs)

@@ -42,7 +42,6 @@ NUM_FILES=20 SYNC_INTERVAL=2 run_neps_with_tmpdir \
     --model_size $model_size \
     --result_dir $result_dir \
     --neps_space_config $neps_space_config \
-    --nproc_per_node $nproc_per_node \
     --neps_mode $neps_mode \
     --runname $SLURM_JOB_NAME \
     --runtime $runtime \

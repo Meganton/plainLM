@@ -52,6 +52,30 @@ def resolve_expression(expr, var_dict):
     return op(*args)
 
 
+def _to_runtime_tensor(value, like_tensor):
+    """Convert scalar-like runtime metadata to a tensor matching parameter dtype/device."""
+    if isinstance(value, torch.Tensor):
+        return value.to(device=like_tensor.device, dtype=like_tensor.dtype)
+    try:
+        return torch.tensor(float(value), dtype=like_tensor.dtype, device=like_tensor.device)
+    except Exception:
+        return torch.tensor(0.0, dtype=like_tensor.dtype, device=like_tensor.device)
+
+
+def _runtime_symbol_dict(optimizer, group, like_tensor):
+    """Return optional runtime symbols with backwards-compatible defaults."""
+    t = getattr(optimizer, "_nos_t", 0.0)
+
+    depth = group.get("depth", 0.0)
+    layer_type_attention = group.get("layer_type_attention", 0.0)
+
+    return {
+        "t": _to_runtime_tensor(t, like_tensor),
+        "depth": _to_runtime_tensor(depth, like_tensor),
+        "layer_type_attention": _to_runtime_tensor(layer_type_attention, like_tensor),
+    }
+
+
 class PremadeBlocks(neps.PipelineSpace):
     """
     Neural Optimizer Search space with variable number of lines and fixed last line updating u.
@@ -281,6 +305,7 @@ class PremadeBlocks(neps.PipelineSpace):
                             "b1": self.betas[0],
                             "b2": self.betas[1],
                         }
+                        var_dict.update(_runtime_symbol_dict(self, group, p.data))
 
                         # Evaluate each line + last line and update state
                         for line in lines + (last_line,):
@@ -386,9 +411,9 @@ class AdamWExtend(neps.PipelineSpace):
             )
 
         if weight_decay is not None:
-            weight_decay = (max(weight_decay[0], 1e-8), weight_decay[1])
+            weight_decay = (max(weight_decay[0], 0), weight_decay[1])
             assert (
-                1e-8 <= weight_decay[0] < weight_decay[1]
+                weight_decay[0] < weight_decay[1] <= 1
             ), f"Invalid weight decay range {weight_decay}"
             self.weight_decay = neps.Float(
                 lower=weight_decay[0], upper=weight_decay[1], log=True
@@ -551,7 +576,7 @@ class AdamWExtend(neps.PipelineSpace):
                         if p.grad is None:
                             d_p = torch.zeros_like(p.data)
                         else:
-                            d_p = p.grad + self.weight_decay * p.data
+                            d_p = p.grad
 
                         state = self.state.setdefault(p, {})
 
@@ -575,6 +600,10 @@ class AdamWExtend(neps.PipelineSpace):
                             "v1": state.get("v1", torch.zeros_like(p.data)),
                             "v2": state.get("v2", torch.zeros_like(p.data)),
                         }
+                        var_dict.update(_runtime_symbol_dict(self, group, p.data))
+
+                        # Apply weight decay
+                        p.data -= self.weight_decay * p.data
 
                         # First perform an AdamW like update
                         state["m"] = self.beta1 * state["m"] + (1 - self.beta1) * d_p
@@ -642,6 +671,364 @@ class AdamWExtend(neps.PipelineSpace):
             def get_lines(self):
                 """Get the sampled optimizer update lines."""
                 return lines + (last_line,)
+
+        return CustomOptimizer
+
+
+
+class AdamWMore(neps.PipelineSpace):
+    """
+    Neural Optimizer Search space with variable number of lines that compute an additional term for the Adam update.
+
+    This space allows for flexible optimizer definitions with up to max_lines
+    of update rules, where each line can assign to either v1 or v2, and the last line always updates u.
+    """
+
+    def __init__(
+        self,
+        n_lines: Tuple[int, int] = (1, 10),
+        fidelity: Tuple[int, int] | None = None,
+        learning_rate: Tuple[float, float] | None = None,
+        weight_decay: Tuple[float, float] | None = None,
+        special_variables: Tuple[str] = ("t", "depth", "layer_type_attention"),
+        term_mode: Literal["add", "mul"] = "add",
+        **_,
+    ):
+        """
+        Initialize the NOS space.
+
+        Args:
+            n_lines: Tuple indicating (min_lines, max_lines)
+            fidelity: Optional fidelity range (lower, upper)
+            learning_rate: Optional learning rate range (lower, upper)
+            weight_decay: Optional weight decay range (lower, upper)
+        """
+        assert (
+            n_lines[0] >= 0 and n_lines[1] >= n_lines[0]
+        ), f"Invalid n_lines range {n_lines}"
+
+        if fidelity is not None:
+            assert (
+                len(fidelity) == 2 and 0 <= fidelity[0] < fidelity[1]
+            ), f"Invalid fidelity range {fidelity}"
+            self.fidelity = neps.IntegerFidelity(lower=fidelity[0], upper=fidelity[1])
+
+        if learning_rate is not None:
+            assert (
+                len(learning_rate) == 2 and 0 < learning_rate[0] < learning_rate[1]
+            ), f"Invalid learning rate range {learning_rate}"
+            self.learning_rate = neps.Float(
+                lower=learning_rate[0], upper=learning_rate[1], log=True
+            )
+
+        if weight_decay is not None:
+            weight_decay = (max(weight_decay[0], 0), weight_decay[1])
+            assert (
+                weight_decay[0] < weight_decay[1] <= 1
+            ), f"Invalid weight decay range {weight_decay}"
+            self.weight_decay = neps.Float(
+                lower=weight_decay[0], upper=weight_decay[1], log=True
+            )
+
+        # Define variables that can be used in optimizer
+        self._input_variables = neps.Categorical(choices=(
+            neps.Categorical(choices=("w", "g", "v1", "v2")),
+            neps.Categorical(choices=special_variables)
+            )
+        )
+        self._output_variables = neps.Categorical(choices=("v1", "v2"))
+
+        # Define constants that can be used in operations
+        self._constants = neps.Categorical(choices=(10, 1, 0, 0.1, 0.01, 0.9, 0.99))
+
+        # Define unary operations
+        self._unary_funct = neps.Categorical(
+            choices=(
+                neps.Operation(
+                    scale_by_constant,
+                    kwargs={"constant": self._constants.resample()},
+                ).resample(),
+                neps.Operation(
+                    clamp_by_constant,
+                    kwargs={"constant": self._constants.resample()},
+                ).resample(),
+                torch.reciprocal,
+                torch.square,
+                torch.exp,
+                torch.sqrt,
+                torch.log,
+                torch.neg,
+            )
+        )
+
+        # Define binary operations
+        self._binary_funct = neps.Categorical(
+            choices=(
+                torch.add,
+                torch.mul,
+                neps.Operation(
+                    interpolate,
+                    kwargs={"constant": self._constants.resample()},
+                ).resample(),
+            )
+        )
+
+        self._unary_right_hand = neps.Operation(
+            operator=self.unaryFunction,
+            args=(
+                self._unary_funct.resample(),
+                self._input_variables.resample(),
+            ),
+        )
+
+        self._binary_right_hand = neps.Operation(
+            operator=self.binaryFunction,
+            args=(
+                self._binary_funct.resample(),
+                self._input_variables.resample(),
+                self._input_variables.resample(),
+            ),
+        )
+
+        # Define possible line structures
+        self._line_right_hand = neps.Categorical(
+            choices=(
+                self._unary_right_hand.resample(),
+                self._binary_right_hand.resample(),
+            )
+        )
+
+        self._u_line_right_hand = neps.Categorical(
+            choices=(
+                self._output_variables.resample(),
+                self._unary_right_hand.resample(),
+                self._binary_right_hand.resample(),
+            )
+        )
+
+        # Create shared line pools
+        self._shared_lines_1 = [
+            (self._output_variables.resample(), self._line_right_hand.resample())
+            for _ in range(n_lines[1])
+        ]
+
+        self._shared_lines_2 = [
+            (self._output_variables.resample(), self._line_right_hand.resample())
+            for _ in range(n_lines[1])
+        ]
+
+        # Create line choices for different line counts
+        self._line_choices_1 = tuple(
+            tuple(self._shared_lines_1[:i]) for i in range(n_lines[0], n_lines[1] + 1)
+        )
+
+        self._line_choices_2 = tuple(
+            tuple(self._shared_lines_2[:i]) for i in range(n_lines[0], n_lines[1] + 1)
+        )
+
+        self._lines1 = neps.Categorical(choices=self._line_choices_1)
+        self._lines2 = neps.Categorical(choices=self._line_choices_2)
+
+        # Define the optimizer class creation operation
+        # Pass all lines via args (unpacked) so NEPS resolves Operations properly
+        self.optimizer_cls = neps.Operation(
+            operator=self.create_optimizer,
+            args=self._lines1,#self._lines2),
+            kwargs={#"lines1": self._lines1.resample(),
+                    "u1": ("u1", self._u_line_right_hand.resample()),
+                    "term_mode": term_mode,
+                    # "lines2": neps.Categorical(choices=self._line_choices_2),
+                    # "u2": self._u_line_right_hand.resample(),
+            },
+        )
+
+    @staticmethod
+    def unaryFunction(operation: Callable, input_value):
+        """Package unary operation with its input."""
+        return operation, input_value
+
+    @staticmethod
+    def binaryFunction(operation: Callable, input1, input2):
+        """Package binary operation with its inputs."""
+        return operation, input1, input2
+
+    @staticmethod
+    def create_optimizer(*lines, u1, term_mode: Literal["add", "mul"] = "add"):
+        """
+        Create a custom optimizer class from the given lines.
+
+        Args:
+            lines: The lines.
+
+        Returns:
+            Custom optimizer class
+        """
+
+        # from pprint import pprint
+        # pprint(lines)
+        # pprint(u1)
+        lines+=(u1,)
+
+
+        class CustomOptimizer(torch.optim.Optimizer):
+            """Custom optimizer with flexible update rules."""
+
+            def __init__(
+                self, params, lr=0.001, betas=(0.9, 0.95), eps=1e-08, weight_decay=0.01, variables=(0.1, 0.1), **kwargs
+            ):
+                defaults = dict(lr=lr, vars=variables, weight_decay=weight_decay)
+                super().__init__(params, defaults)
+                self.lr = lr
+                self.weight_decay = weight_decay
+                self.beta1 = betas[0]
+                self.beta2 = betas[1]
+                self.eps = eps
+
+                # pprint(lines)
+                # pprint(u1)
+
+                # new_lines = []
+                # for line in lines1:
+                #     print("Processing line:", line)
+                #     if not isinstance(line[0], tuple):
+                #         print("Line is not a tuple, adding directly:", line)
+                #         new_lines.append((line[0], line[1]))
+                #     else:
+                #         for subline in line:
+                #             print("Processing subline:", subline)
+                #             print("Append subline to new_lines:", subline[0])
+                #             new_lines.append((subline[0], (subline[1])))
+                self.opt_lines = lines
+
+                # Initialize state for each parameter
+                for group in self.param_groups:
+                    for p in group.get("params", []):
+                        state = self.state.setdefault(p, {})
+                        if "v1" not in state:
+                            state["v1"] = torch.ones_like(p.data) * variables[0]
+                        if "v2" not in state:
+                            state["v2"] = torch.ones_like(p.data) * variables[1]
+                        if "u1" not in state:
+                            state["u1"] = torch.zeros_like(p.data)
+                        if "u2" not in state:
+                            state["u2"] = torch.zeros_like(p.data)
+                        if "m" not in state:
+                            state["m"] = torch.zeros_like(p.data)
+                        if "v" not in state:
+                            state["v"] = torch.zeros_like(p.data)
+                        
+
+            def step(self, closure=None):
+                """Perform a single optimization step."""
+                loss = None
+                if closure is not None:
+                    with torch.enable_grad():
+                        loss = closure()
+
+                for group in self.param_groups:
+                    for p in group.get("params", []):
+                        # Get gradient (or zero if missing)
+                        if p.grad is None:
+                            d_p = torch.zeros_like(p.data)
+                        else:
+                            d_p = p.grad
+
+                        state = self.state.setdefault(p, {})
+
+                        def as_tensor(x):
+                            """Convert to tensor matching parameter."""
+                            if isinstance(x, torch.Tensor):
+                                try:
+                                    return x.to(device=p.data.device, dtype=p.data.dtype)
+                                except Exception:
+                                    return x
+                            else:
+                                return torch.tensor(
+                                    x, dtype=p.data.dtype, device=p.data.device
+                                )
+
+                        # Build variable dictionary
+                        var_dict = {
+                            "g": d_p,
+                            "w": p.data,
+                            "u1": state.get("u1", torch.zeros_like(p.data)),
+                            "u2": state.get("u2", torch.zeros_like(p.data)),
+                            "v1": state.get("v1", torch.zeros_like(p.data)),
+                            "v2": state.get("v2", torch.zeros_like(p.data)),
+                        }
+                        var_dict.update(_runtime_symbol_dict(self, group, p.data))
+                        # print(_runtime_symbol_dict(self, group, p.data))
+
+                        # Apply weight decay
+                        p.data -= self.weight_decay * p.data
+
+                        # First perform an AdamW like update
+                        state["m"] = self.beta1 * state["m"] + (1 - self.beta1) * d_p
+                        state["v"] = self.beta2 * state["v"] + (1 - self.beta2) * (d_p * d_p)
+                        m_hat = state["m"] / (1 - self.beta1)
+                        v_hat = state["v"] / (1 - self.beta2)
+
+                        # Evaluate each line + last line and update state
+                        for line in self.opt_lines:
+                            # print("Evaluating line:", line)
+                            target_var, expr = line
+                            result = resolve_expression(expr, var_dict)
+                            result = as_tensor(result)
+                            state[target_var] = result
+                            var_dict[target_var] = result
+
+                        # Apply update to parameter
+                        p.data = (
+                            (p.data - self.lr * (m_hat / (torch.sqrt(v_hat) + self.eps)) * state["u1"]) if term_mode=="mul" 
+                            else (p.data - self.lr * (m_hat / (torch.sqrt(v_hat) + self.eps) + state["u1"]))
+                        )
+
+                return loss
+
+            def __repr__(self) -> str:
+                """String representation of the optimizer."""
+                string = f"{self.__class__.__name__}(\n"
+                for group in self.param_groups:
+                    string += f"  Parameter group:\n"
+                    for k, v in group.items():
+                        if k != "params":
+                            string += f"    {k}: {v}\n"
+                string += ")\nLines:\n"
+                string += "(fixed) m = beta1 * m + (1 - beta1) * g\n"
+                string += "(fixed) v = beta2 * v + (1 - beta2) * (g * g)\n"
+                string += "(fixed) m_hat = m / (1 - beta1)\n"
+                string += "(fixed) v_hat = v / (1 - beta2)\n"
+                for line in self.opt_lines:
+                    target_var = line[0]
+                    expression = line[1]
+                    if isinstance(expression, tuple):
+                        string += f"  {target_var:>2} = "
+                        expr = expression
+                        if callable(expr[0]):
+                            if isinstance(expr[0], partial):
+                                string += f"{expr[0].func.__name__}("
+                                if expr[0].keywords:
+                                    string += "{"
+                                    for k, v in expr[0].keywords.items():
+                                        string += f"{k}={v}, "
+                                    string = string.rstrip(", ")
+                                    string += "}, "
+                            else:
+                                string += f"{expr[0].__name__}("
+                            for arg in expr[1:]:
+                                string += f"{arg}, "
+                        else:
+                            string += f"{expr[0]}"
+                        string = string.rstrip(", ")
+                        string += ")\n"
+                    else:
+                        string += f"  {target_var:>2} = {expression}\n"
+                string += f"(fixed) w = w - lr * (m_hat / (sqrt(v_hat) + eps) + u1) * u2\n"
+                return string
+
+            def get_lines(self):
+                """Get the sampled optimizer update lines."""
+                return self.opt_lines
 
         return CustomOptimizer
 
@@ -1177,7 +1564,7 @@ class NOSSpaceNLinesU(neps.PipelineSpace):
                         if p.grad is None:
                             d_p = torch.zeros_like(p.data)
                         else:
-                            d_p = p.grad + self.weight_decay * p.data
+                            d_p = p.grad
 
                         state = self.state.setdefault(p, {})
 
@@ -1201,6 +1588,10 @@ class NOSSpaceNLinesU(neps.PipelineSpace):
                             "v1": state.get("v1", torch.zeros_like(p.data)),
                             "v2": state.get("v2", torch.zeros_like(p.data)),
                         }
+                        var_dict.update(_runtime_symbol_dict(self, group, p.data))
+
+                        # Apply weight decay
+                        p.data -= self.weight_decay * p.data
 
                         # Evaluate each line + last line and update state
                         for line in lines + (last_line,):
@@ -1445,7 +1836,7 @@ class NOSSpaceMaxLines(neps.PipelineSpace):
                         if p.grad is None:
                             d_p = torch.zeros_like(p.data)
                         else:
-                            d_p = p.grad + self.weight_decay * p.data
+                            d_p = p.grad
 
                         state = self.state.setdefault(p, {})
 
@@ -1469,6 +1860,10 @@ class NOSSpaceMaxLines(neps.PipelineSpace):
                             "v1": state.get("v1", torch.zeros_like(p.data)),
                             "v2": state.get("v2", torch.zeros_like(p.data)),
                         }
+                        var_dict.update(_runtime_symbol_dict(self, group, p.data))
+
+                        # Apply weight decay
+                        p.data -= self.weight_decay * p.data
 
                         # Evaluate each line and update state
                         for line in lines:
@@ -1692,7 +2087,7 @@ class NOSSpace3Lines(neps.PipelineSpace):
                         if p.grad is None:
                             d_p = torch.zeros_like(p.data)
                         else:
-                            d_p = p.grad + self.weight_decay * p.data
+                            d_p = p.grad 
 
                         state = self.state.setdefault(p, {})
 
@@ -1715,6 +2110,10 @@ class NOSSpace3Lines(neps.PipelineSpace):
                             "v1": state.get("v1", torch.zeros_like(p.data)),
                             "v2": state.get("v2", torch.zeros_like(p.data)),
                         }
+                        var_dict.update(_runtime_symbol_dict(self, group, p.data))
+
+                        # Apply weight decay
+                        p.data -= self.weight_decay * p.data
 
                         # Evaluate 3 lines: v1, v2, u
                         for n, line in enumerate(lines):
@@ -2019,7 +2418,7 @@ class SmallAdamMul(neps.PipelineSpace):
                         if p.grad is None:
                             d_p = torch.zeros_like(p.data)
                         else:
-                            d_p = p.grad + self.weight_decay * p.data
+                            d_p = p.grad
 
                         state = self.state.setdefault(p, {})
 
@@ -2043,6 +2442,10 @@ class SmallAdamMul(neps.PipelineSpace):
                             "v1": state.get("v1", torch.zeros_like(p.data)),
                             "v2": state.get("v2", torch.zeros_like(p.data)),
                         }
+                        var_dict.update(_runtime_symbol_dict(self, group, p.data))
+
+                        # Apply weight decay
+                        p.data -= self.weight_decay * p.data
 
                         # First perform an AdamW like update
                         state["m"] = self.beta1 * state["m"] + (1 - self.beta1) * d_p

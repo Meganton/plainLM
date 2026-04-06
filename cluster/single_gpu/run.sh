@@ -13,7 +13,7 @@
 
 # Activate environment
 cd ~/plainLM
-source .venv/bin/activate
+source .venvbin/activate
 
 # Hyperparmeters are specified in a YAML configuration file
 config=config/models/8M.yaml

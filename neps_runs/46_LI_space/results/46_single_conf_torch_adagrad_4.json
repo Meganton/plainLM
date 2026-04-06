@@ -1,0 +1,26 @@
+{
+  "loss_history": [
+    4.874447631835937,
+    4.874447631835937
+  ],
+  "cost_history": [
+    14.4,
+    14.4
+  ],
+  "incumbent_history": [
+    4.874447631835937,
+    4.874447631835937
+  ],
+  "cumulated_cost_history": [
+    14.4,
+    28.8
+  ],
+  "fidelity_history": [
+    50,
+    50
+  ],
+  "cumulated_fidelity_history": [
+    50,
+    100
+  ]
+}
