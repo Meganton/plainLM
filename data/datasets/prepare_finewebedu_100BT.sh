@@ -3,17 +3,36 @@
 # This script will download and preprocess FineWebEdu-100BT.
 # Expect some token loss by batched concat_chunk.
 
+# Old setup (kept for reference):
+# mkdir -p "~/tmp"
+# cd ~/plainLM
+# source .venv/bin/activate
 
-mkdir -p "~/tmp"
-cd ~/plainLM
-source .venvbin/activate
+mkdir -p "/home/hk-project-p0023364/fr_ag632/plainLM2/data/tmp_cache"
+mkdir -p "/home/hk-project-p0023364/fr_ag632/plainLM2/data/fwedu"
+cd /home/hk-project-p0023364/fr_ag632/plainLM2
+source .venv/bin/activate
+
+# Old command (kept for reference):
+# PYTHONPATH=. python data/datasets/prepare.py \
+#   --out_path="~/data/lm/fwedu/fwedu_sample_100B_tokenizer_GPTNeoX" \
+#   --cache_path="~/tmp" \
+#   --download --tokenize --chunk \
+#   --save_tokenized --save_tokenizer \
+#   --dataset_path="HuggingFaceFW/fineweb-edu" \
+#   --dataset_split="train" \
+#   --dataset_name="sample-100BT" \
+#   --tokenizer="EleutherAI/gpt-neox-20b" \
+#   --seq_length=2048 \
+#   --split_train_valid=True \
+#   --n_tokens_valid=10000000
 
 
 PYTHONPATH=. python data/datasets/prepare.py \
-  --out_path="~/data/lm/fwedu/fwedu_sample_100B_tokenizer_GPTNeoX" \
-  --cache_path="~/tmp" \
+  --out_path="/home/hk-project-p0023364/fr_ag632/plainLM2/data/fwedu/fwedu_sample_100B_tokenizer_GPTNeoX" \
+  --cache_path="/home/hk-project-p0023364/fr_ag632/plainLM2/data/tmp_cache" \
   --download --tokenize --chunk \
-  --save_tokenized --save_tokenizer \
+  --save_tokenizer \
   --dataset_path="HuggingFaceFW/fineweb-edu" \
   --dataset_split="train" \
   --dataset_name="sample-100BT" \
