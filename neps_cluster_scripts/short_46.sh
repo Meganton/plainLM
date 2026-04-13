@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --account=hk-project-p0023364
+#SBATCH --account=p_deeplearning
 #SBATCH --job-name=short_46
-#SBATCH --output=/scratch/slurm_tmpdir/job_%j/logs/%a.out
-#SBATCH --error=/scratch/slurm_tmpdir/job_%j/logs/%a.err
+#SBATCH --output=/tmp/logs/%a.out
+#SBATCH --error=/tmp/logs/%a.err
 #SBATCH --time=01:50:00
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=16
-#SBATCH --partition=accelerated
+#SBATCH --partition=capella
 #SBATCH --array=0-0
 
 # Create log directory in TMPDIR first (SLURM writes logs here)
@@ -38,7 +38,7 @@ echo "Running NEPS with optimizer: $neps_optimizer, model size: $model_size, see
 
 start_time=$(date +%s)
 
-NUM_FILES=20 run_neps_with_tmpdir \
+NUM_FILES=2 run_neps_with_tmpdir \
     --seed $seed \
     --neps_optimizer $neps_optimizer \
     --model_size $model_size \

@@ -7,8 +7,8 @@
 set -e  # Exit on error
 
 # Default parameters (can be overridden)
-NUM_FILES=${NUM_FILES:-10}  # Default: 10 files for up to 6K steps
-SOURCE_DIR="/home/hk-project-p0023364/hgf_omt7140/data/lm/fwedu/fwedu_sample_100B_tokenizer_GPTNeoX/tokenized_EleutherAI_gpt-neox-20b/ctx_2048"
+NUM_FILES=${NUM_FILES:-2}  # Default: 2 files for up to 6K steps
+SOURCE_DIR="/data/horse/ws/ange731i-anton/plainLM/datasets/fwedu/fwedu_sample_100B_tokenizer_GPTNeoX/tokenized_EleutherAI_gpt-neox-20b/ctx_2048"
 
 # Check if $TMPDIR is set
 if [ -z "$TMPDIR" ]; then
@@ -38,10 +38,10 @@ cp -v $SOURCE_DIR/train/state.json $TMPDIR/dataset/train/
 # Copy first N arrow files from training set
 echo "[2/4] Copying first $NUM_FILES training arrow files..."
 for i in $(seq -f "%05g" 0 $((NUM_FILES - 1))); do
-    if [ -f "$SOURCE_DIR/train/data-${i}-of-00802.arrow" ]; then
-        cp -v $SOURCE_DIR/train/data-${i}-of-00802.arrow $TMPDIR/dataset/train/
+    if [ -f "$SOURCE_DIR/train/data-${i}-of-00051.arrow" ]; then
+        cp -v $SOURCE_DIR/train/data-${i}-of-00051.arrow $TMPDIR/dataset/train/
     else
-        echo "WARNING: File data-${i}-of-00802.arrow not found, skipping..."
+        echo "WARNING: File data-${i}-of-00051.arrow not found, skipping..."
     fi
 done
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --account=hk-project-p0023364
+#SBATCH --account=p_deeplearning
 #SBATCH --job-name=test
 #SBATCH --error=/home/hk-project-p0023364/hgf_omt7140/log/%x_%A_%a.err
 #SBATCH --output=/home/hk-project-p0023364/hgf_omt7140/log/%x_%A_%a.out
@@ -8,7 +8,7 @@
 #SBATCH --requeue
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --partition=accelerated
+#SBATCH --partition=capella
 #SBATCH --array=1
 
 # Activate environment

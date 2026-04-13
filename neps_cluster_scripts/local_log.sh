@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=short_8_v5
-#SBATCH --output=/tmp/logs/%a.out
-#SBATCH --error=/tmp/logs/%a.err
+#SBATCH --job-name=local_log
+#SBATCH --output=neps_runs/_log/%x/%A/%a.out
+#SBATCH --error=neps_runs/_log/%x/%A/%a.err
 #SBATCH --time=00:15:00
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:1
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=8
 #SBATCH --partition=capella
 #SBATCH --account=p_deeplearning
 #SBATCH --array=0-0
@@ -17,7 +17,7 @@ mkdir -p ${TMPDIR}/logs/
 
 # Auto-detect number of GPUs from SLURM allocation (default to 1 for this test)
 echo "Detected $SLURM_GPUS_PER_NODE GPUs per Node"
-nproc_per_node=${SLURM_GPUS_PER_NODE:-2}
+nproc_per_node=${SLURM_GPUS_PER_NODE:-1}
 
 # Create log directory in HOME (periodic sync destination)
 mkdir -p neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/
@@ -29,8 +29,8 @@ source neps_cluster_scripts/utils/neps_tmpdir_wrapper.sh
 # Job parameters
 neps_optimizer="HB"                   # the NEPS algorithm to use
 model_size="8M"
-result_dir="neps_runs/tests/short_8_v5"
-runtime=7                                  # runtime in minutes (SLURM 10 min - 2 min overhead = 8 min available)
+result_dir="neps_runs/tests/local_log"
+runtime=3                                  # runtime in minutes (SLURM 10 min - 2 min overhead = 8 min available)
 # evaluations=576                             # total number of evaluations to run, gets multiplied with max_fidelity
 neps_space_config="AdamMore"          # the NOS space to search over
 # warmstarter="SGDM_inter"

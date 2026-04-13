@@ -8,7 +8,7 @@
 #SBATCH --requeue
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=32
-#SBATCH --partition=dev_accelerated
+#SBATCH --partition=dev_capella
 #SBATCH --mem=500000
 #SBATCH --array=1
 

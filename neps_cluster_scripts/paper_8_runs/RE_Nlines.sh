@@ -1,12 +1,13 @@
 #!/bin/bash
 #SBATCH --account=p_deeplearning
-#SBATCH --job-name=sota_li1_rand_01_r1_am1_add
+#SBATCH --job-name=nlines_re_8m
 #SBATCH --output=/tmp/logs/%a.out
 #SBATCH --error=/tmp/logs/%a.err
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=32
 #SBATCH --partition=capella
+#SBATCH --nodes=1
 #SBATCH --array=0-4
 
 # Create log directory in TMPDIR first (SLURM writes logs here)
@@ -23,14 +24,14 @@ source ./.venv/bin/activate
 source neps_cluster_scripts/utils/neps_tmpdir_wrapper.sh
 
 # Job parameters
-neps_optimizer="LI1_rand0.1r1"                   # the NEPS algorithm to use
-model_size="46M"
-result_dir="neps_runs/46_LI_space"
+neps_optimizer="RE"                   # the NEPS algorithm to use
+model_size="8M"
+result_dir="neps_runs/paper_8"
 runtime=2600                                  # ca the runtime in minutes + some overhead
 # evaluations=576                             # total number of evaluations to run, gets multiplied with max_fidelity
-neps_space_config="AdamMore1"          # the NOS space to search over
+neps_space_config="NLinesU_nf_l_nw"          # the NOS space to search over
 # warmstarter="SGDM_inter"
-neps_mode="continuation"                             # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
+neps_mode="normal"                             # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
 
 echo "Running NEPS with optimizer: $neps_optimizer, model size: $model_size, seed: $SLURM_ARRAY_TASK_ID"
 

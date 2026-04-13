@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --account=hk-project-p0023364
+#SBATCH --account=p_deeplearning
 #SBATCH --job-name=GridSearch_full
 #SBATCH --error=/scratch/slurm_tmpdir/%x/job_%j/%x_%a.err
 #SBATCH --output=/scratch/slurm_tmpdir/%x/job_%j/%x_%a.out
 #SBATCH --time=26:00:00
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=32
-#SBATCH --partition=accelerated
+#SBATCH --partition=capella
 #SBATCH --array=0-4
 
 # Auto-detect number of GPUs from SLURM allocation (default to 4)

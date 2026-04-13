@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --account=hk-project-p0023364
+#SBATCH --account=p_deeplearning
 #SBATCH --job-name=short_sweep
 #SBATCH --error=/scratch/slurm_tmpdir/%x/job_%j/%x_%a.err
 #SBATCH --output=/scratch/slurm_tmpdir/%x/job_%j/%x_%a.out
 #SBATCH --time=00:40:00
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --partition=accelerated
+#SBATCH --partition=capella
 #SBATCH --array=0-0
 
 # Auto-detect number of GPUs from SLURM allocation (default to 1)
@@ -35,7 +35,7 @@ echo "Running NEPS with optimizer: $neps_optimizer, model size: $model_size, see
 
 start_time=$(date +%s)
 
-NUM_FILES=20 run_neps_with_tmpdir \
+NUM_FILES=2 run_neps_with_tmpdir \
     --seed $seed \
     --neps_optimizer $neps_optimizer \
     --model_size $model_size \

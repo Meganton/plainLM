@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --account=hk-project-p0023364
+#SBATCH --account=p_deeplearning
 #SBATCH --job-name=li1_fixed_8_results
 #SBATCH --output=neps_runs/_log/result_extraction/li1_fixed_8_results/%a.out
 #SBATCH --error=neps_runs/_log/result_extraction/li1_fixed_8_results/%a.err
 #SBATCH --time=00:10:00
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --partition=accelerated
+#SBATCH --partition=capella
 #SBATCH --array=0-4
 
 # Create log directory in HOME (SLURM writes logs here)

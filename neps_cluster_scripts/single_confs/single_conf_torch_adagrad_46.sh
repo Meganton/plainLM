@@ -1,23 +1,23 @@
 #!/bin/bash
-#SBATCH --account=hk-project-p0023364
-#SBATCH --job-name=single_torch_conf_nadam
-#SBATCH --error=neps_runs/_log/8/single_torch_conf_nadam/%x/%A.err
-#SBATCH --output=neps_runs/_log/8/single_torch_conf_nadam/%x/%A.out
-#SBATCH --time=00:40:00
+#SBATCH --account=p_deeplearning
+#SBATCH --job-name=single_torch_conf_adagrad_46
+#SBATCH --error=neps_runs/_log/46/single_torch_conf_adagrad/%x/%A.err
+#SBATCH --output=neps_runs/_log/46/single_torch_conf_adagrad/%x/%A.out
+#SBATCH --time=01:40:00
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=32
-#SBATCH --partition=accelerated
+#SBATCH --partition=capella
 
 # Create _log directory
-mkdir -p neps_runs/_log/8/single_torch_conf_nadam/${SLURM_JOB_NAME}
+mkdir -p neps_runs/_log/46/single_torch_conf_adagrad_46/${SLURM_JOB_NAME}
 
 # Activate environment
 source ./.venv/bin/activate
 
-model_size="8M"
-runname="8_single_conf_torch_nadam"
+model_size="46M"
+runname="46_single_conf_torch_adagrad"
 neps_space_config="AdamExtend_f_l_nw"
-config="torch_NAdam"
+config="torch_Adagrad"
 nproc_per_node=4
 
 echo "Running NEPS with model size: $model_size, nproc_per_node: $nproc_per_node"

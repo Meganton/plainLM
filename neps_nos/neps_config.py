@@ -14,6 +14,7 @@ from functools import partial
 OPTIMIZERS = {
     "RE": ("neps_regularized_evolution", {"ignore_fidelity": "highest_fidelity"}),
     "RS": ("neps_random_search", {"ignore_fidelity": "highest_fidelity"}),
+    "HB": ("neps_hyperband",{}),
     'LI3_r0.1': ("neps_local_and_incumbent", {
         'base': 'hyperband',
         'eta': 2,
@@ -142,6 +143,9 @@ OPTIMIZERS = {
         'inc_takeover_mode': 1,
         'mutation_mode': ['random', 0.1],
         'random_ratio': 0.3
+    }),
+    'PB_like': ("neps_priorband", {
+        'base': 'hyperband',
     }),
 }
 

@@ -549,10 +549,10 @@ It sweeps over LRs `[0.0001, 0.0009, 0.0003, 0.0027, 0.0081, 0.0243]`. If the sp
 ### Resource Profile (typical SOTA runs)
 
 ```bash
-#SBATCH --account=hk-project-p0023364
+#SBATCH --account=p_deeplearning
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=32
-#SBATCH --partition=accelerated
+#SBATCH --partition=capella
 #SBATCH --time=48:00:00
 #SBATCH --array=0-4          # 5 independent seeds
 ```
@@ -577,13 +577,13 @@ Each array task = one independent NePS seed run.
 
 Running on HPC clusters, network filesystem I/O is a bottleneck for NePS (which reads/writes many small files). The wrapper:
 
-1. **Copies N arrow dataset files** to `$TMPDIR/dataset/` (default 10 files ≈ 5 GB; set `NUM_FILES=20` for longer runs).
+1. **Copies N arrow dataset files** to `$TMPDIR/dataset/` (default 1 file ≈ 5 GB; set `NUM_FILES=2` for longer runs).
 2. Runs the pipeline **from HOME** — code and NePS results stay on the shared filesystem for multi-node coordination.
 3. **Periodic background sync** (default every 2 min, set `SYNC_INTERVAL=N`) copies SLURM logs from `$TMPDIR/logs/` back to `neps_runs/_log/` to prevent data loss.
 4. **Final log sync** after the job ends.
 
 Environment variables:
-- `NUM_FILES` — number of arrow dataset files to copy (default 10)
+- `NUM_FILES` — number of arrow dataset files to copy (default 2)
 - `SYNC_INTERVAL` — log sync period in minutes (default 2)
 
 ### `neps_mode` Values

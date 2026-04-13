@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --account=hk-project-p0023364
+#SBATCH --account=p_deeplearning
 #SBATCH --job-name=single_torch_conf_sgd_nesterov_46
 #SBATCH --error=neps_runs/_log/46/single_torch_conf_sgd_nesterov/%x/%A.err
 #SBATCH --output=neps_runs/_log/46/single_torch_conf_sgd_nesterov/%x/%A.out
 #SBATCH --time=01:40:00
 #SBATCH --gres=gpu:4
 #SBATCH --cpus-per-task=32
-#SBATCH --partition=accelerated
+#SBATCH --partition=capella
 
 # Create _log directory
 mkdir -p neps_runs/_log/46/single_torch_conf_sgd_nesterov_46/${SLURM_JOB_NAME}
