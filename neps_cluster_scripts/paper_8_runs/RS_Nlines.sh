@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --partition=capella
 #SBATCH --nodes=1
-#SBATCH --array=0-4
+#SBATCH --array=5-9
 
 # Create log directory in TMPDIR first (SLURM writes logs here)
 mkdir -p ${TMPDIR}/logs/

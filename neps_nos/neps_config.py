@@ -147,6 +147,18 @@ OPTIMIZERS = {
     'PB_like': ("neps_priorband", {
         'base': 'hyperband',
     }),
+    'PB_95': ("neps_priorband", {
+        'base': 'hyperband',
+        'inc_ratio': 0.95,
+    }),
+    'PB_80': ("neps_priorband", {
+        'base': 'hyperband',
+        'inc_ratio': 0.80,
+    }),
+    'PB_50': ("neps_priorband", {
+        'base': 'hyperband',
+        'inc_ratio': 0.50,
+    }),
 }
 
 

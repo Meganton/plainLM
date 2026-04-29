@@ -38,11 +38,25 @@ def process_neps_status(neps_dir):
     if "objective_to_minimize" not in full or full.empty:
         return None
     
+    print("Loss")
+    print(full["objective_to_minimize"].head(5))
+    print(full["objective_to_minimize"].tail(5))
+    print(len(full["objective_to_minimize"]), "total entries in status dataframe.")
     loss_history = full["objective_to_minimize"].fillna(np.inf).tolist()
+    print(len(loss_history), "loss entries collected.")
+    print(loss_history[:5], "first 5 loss entries")
+    print(loss_history[-5:], "last 5 loss entries")
     cost_history = full["cost"].fillna(float(0)).tolist()
     fidelity_history = []
     if "config.ENVIRONMENT__fidelity" in full:
+        print("Fidelity found")
+        print(full["config.ENVIRONMENT__fidelity"].head(5))
+        print(full["config.ENVIRONMENT__fidelity"].tail(5))
+        print(len(full["config.ENVIRONMENT__fidelity"]), "total fidelity entries in status dataframe.")
         fidelity_history = full["config.ENVIRONMENT__fidelity"].fillna(float(0)).tolist()
+        print(len(fidelity_history), "fidelity entries collected.")
+        print(fidelity_history[:5], "first 5 fidelity entries")
+        print(fidelity_history[-5:], "last 5 fidelity entries")
     
     return loss_history, cost_history, fidelity_history
 

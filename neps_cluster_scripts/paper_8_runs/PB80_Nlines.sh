@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --account=p_deeplearning
-#SBATCH --job-name=nlines_pb_8m
+#SBATCH --job-name=nlines_pb80_8m
 #SBATCH --output=/tmp/logs/%a.out
 #SBATCH --error=/tmp/logs/%a.err
 #SBATCH --time=48:00:00
@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --partition=capella
 #SBATCH --nodes=1
-#SBATCH --array=5-9
+#SBATCH --array=0-9
 
 # Create log directory in TMPDIR first (SLURM writes logs here)
 mkdir -p ${TMPDIR}/logs/
@@ -24,7 +24,7 @@ source ./.venv/bin/activate
 source neps_cluster_scripts/utils/neps_tmpdir_wrapper.sh
 
 # Job parameters
-neps_optimizer="PB_like"                   # the NEPS algorithm to use
+neps_optimizer="PB_80"                   # the NEPS algorithm to use
 model_size="8M"
 result_dir="neps_runs/paper_8"
 runtime=2600                                  # ca the runtime in minutes + some overhead

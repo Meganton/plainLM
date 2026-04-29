@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --partition=capella
 #SBATCH --nodes=1
-#SBATCH --array=0-4
+#SBATCH --array=5-9
 
 # Create log directory in TMPDIR first (SLURM writes logs here)
 mkdir -p ${TMPDIR}/logs/
@@ -29,7 +29,7 @@ model_size="8M"
 result_dir="neps_runs/paper_8"
 runtime=2600                                  # ca the runtime in minutes + some overhead
 # evaluations=576                             # total number of evaluations to run, gets multiplied with max_fidelity
-neps_space_config="NLinesU_nf_l_nw"          # the NOS space to search over
+neps_space_config="NLinesU_f_l_nw"          # the NOS space to search over
 # warmstarter="SGDM_inter"
 neps_mode="normal"                             # overwrite/continuation/normal -> decides wether to overwrite dir, warmstart again, etc.
 

@@ -294,10 +294,25 @@ def _extract_results(
     
     incumbents = run_data["incumbent_history"]
     cumulated_costs = run_data["cumulated_cost_history"]
-    if use_fidelity and "cumulated_fidelity_history" in run_data:
-        cumulated_costs = run_data["cumulated_fidelity_history"]
-    
-    index_indicator = "Cumulative cost" if not use_fidelity else "Cumulative fidelity"
+    index_indicator = "Cumulative cost"
+
+    if use_fidelity:
+        fidelity_history = run_data.get("cumulated_fidelity_history")
+        # Some runs store this key but leave it empty; fall back to cost history.
+        if isinstance(fidelity_history, list) and len(fidelity_history) > 0:
+            cumulated_costs = fidelity_history
+            index_indicator = "Cumulative fidelity"
+
+    if len(incumbents) != len(cumulated_costs):
+        min_len = min(len(incumbents), len(cumulated_costs))
+        if min_len == 0:
+            raise ValueError(
+                f"Mismatched history lengths in {path.with_suffix('.json')}: "
+                f"len(incumbent_history)={len(incumbents)}, "
+                f"len({index_indicator.lower().replace(' ', '_')}_history)={len(cumulated_costs)}"
+            )
+        incumbents = incumbents[:min_len]
+        cumulated_costs = cumulated_costs[:min_len]
 
     # Create DataFrame
     df = pd.DataFrame({"Objective to minimize": incumbents, index_indicator: cumulated_costs})
