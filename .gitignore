@@ -51,6 +51,7 @@ neps_runs/**/results/
 # Ignore logs
 neps_runs/log/
 neps_runs/_log/
+logs/
 
 # Ignore plots
 # neps_plots/plots/
@@ -63,4 +64,5 @@ neps_cluster_scripts/tests/
 
 # ml experiments
 opt-search/
-datasets/
+data/tmp_cache/
+data/fwedu/

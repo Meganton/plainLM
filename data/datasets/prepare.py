@@ -110,6 +110,16 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean(
   "save_tokenizer", False, "Save the tokenizer to disk. Ignored if `tokenize` is False.",
 )
+flags.DEFINE_integer(
+  "map_batch_size",
+  1024,
+  "Batch size passed to Dataset.map during tokenization and chunking.",
+)
+flags.DEFINE_integer(
+  "map_num_proc",
+  8,
+  "Number of parallel worker processes used by Dataset.map.",
+)
 
 FLAGS = flags.FLAGS
 
@@ -145,7 +155,7 @@ def main(_):
     FLAGS.tokenizer.replace("/", "_") if FLAGS.tokenizer is not None else None
   )  # sanitize name for paths
 
-  map_setup = dict(batched=True, batch_size=1024, num_proc=8)
+  map_setup = dict(batched=True, batch_size=FLAGS.map_batch_size, num_proc=FLAGS.map_num_proc)
 
   # --------------------------------------------------------------------
   ## Download.

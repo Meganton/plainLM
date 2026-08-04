@@ -1,0 +1,146 @@
+cpu-bind=MASK - dlc2gpu14, task  0  0 [374146]: mask 0xfe01000000000000fe010 set
+/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/pyro/ops/stats.py:514: SyntaxWarning: invalid escape sequence '\g'
+  """
+INFO:neps.api:Starting neps.run using root directory neps_runs/tests/short_8/neps/short_8/seed_0
+INFO:neps.api:Search space:
+AdamWMore with parameters:
+  fidelity = IntegerFidelity(3, 12)
+  learning_rate = Float(1e-05, 0.1, log)
+  weight_decay = Float(1e-06, 0.2, log)
+  optimizer_cls:
+    create_optimizer(
+       Categorical(
+          choices=(
+             (
+                (
+                   Resample(
+                      Categorical(
+                         choices=(v1, v2)
+                   ) ),
+                   Resample(
+                      Categorical(
+                         choices=(
+                            Resample(
+                               unaryFunction(
+                                  Resample(
+                                     Categorical(
+                                        choices=(
+                                           Resample(
+                                              scale_by_constant(
+                                                 constant=Resample(
+                                                    Categorical(
+                                                       choices=(10, 1, 0, 0.1, 0.01, 0.9, 0.99)
+                                                 ) ),
+                                           ) ),
+                                           Resample(
+...
+INFO:root:Hyperband Rung to Fidelity:
+Rung 1: Fidelity >= 12
+Rung 0: Fidelity >= 4
+INFO:root:Hyperband Bracket Layouts:
+Bracket 0
+At Rung 0: 3 configs
+At Rung 1: 1 configs
+
+Bracket 1
+At Rung 1: 2 configs
+INFO:neps.runtime:Summary files can be found in the “summary” folder inside the root directory: /work/dlc2workfs2/gebureka-neps_bo/LLM_task/neps_runs/tests/short_8/neps/short_8/seed_0/summary
+INFO:neps.runtime:Using optimizer: neps_hyperband
+INFO:neps.runtime:Budget status - Cost: 0.0/7 (0%)
+INFO:neps.runtime:Worker 'worker_0' sampled new trial: 1_rung_0.
+ERROR:neps.state.pipeline_eval:Error during evaluation of '1_rung_0': {'SAMPLING__Resolvable.learning_rate::float__1e-05_0.1_True': 0.020317142202962286, 'SAMPLING__Resolvable.weight_decay::float__1e-06_0.2_True': 6.475956892372484e-06, 'SAMPLING__Resolvable.optimizer_cls.args::categorical__6': 2, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[0].sequence[0].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[0].sequence[1].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[0].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_categorical::categorical__8': 2, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[0].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical::categorical__2': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[0].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical.sampled_value::categorical__3': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[1].sequence[0].resampled_categorical::categorical__2': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[1].sequence[1].resampled_categorical::categorical__2': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[1].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_categorical::categorical__3': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[1].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical::categorical__2': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[1].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[2].resampled_categorical::categorical__2': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[0].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[1].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_categorical::categorical__8': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_categorical.sampled_value.resampled_operation.kwargs.mapping_value{constant}.resampled_categorical::categorical__7': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical.sampled_value::categorical__4': 1, 'SAMPLING__Resolvable.optimizer_cls.kwargs.mapping_value{u1}.sequence[1].resampled_categorical::categorical__3': 2, 'SAMPLING__Resolvable.optimizer_cls.kwargs.mapping_value{u1}.sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_categorical::categorical__3': 1, 'SAMPLING__Resolvable.optimizer_cls.kwargs.mapping_value{u1}.sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.kwargs.mapping_value{u1}.sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[2].resampled_categorical::categorical__2': 1, 'ENVIRONMENT__fidelity': 4}.
+ERROR:neps.state.pipeline_eval:Can't pickle sentinel: it's not the same object as typing_extensions.sentinel
+Traceback (most recent call last):
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/neps/state/pipeline_eval.py", line 384, in _eval_trial
+    user_result = fn(**kwargs, **trial.config)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/neps/space/neps_spaces/neps_space.py", line 1119, in inner
+    return evaluation_pipeline(*args, **new_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/neps_nos/neps_pipeline.py", line 230, in evaluate_pipeline_base
+    valid_loss = run_training(
+                 ^^^^^^^^^^^^^
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/neps_nos/neps_pipeline.py", line 149, in run_training
+    dill.dump(optimizer_cls, f)
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 261, in dump
+    Pickler(file, protocol, **_kwds).dump(obj)
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 429, in dump
+    StockPickler.dump(self, obj)
+  File "/usr/lib/python3.12/pickle.py", line 481, in dump
+    self.save(obj)
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 423, in save
+    StockPickler.save(self, obj, save_persistent_id)
+  File "/usr/lib/python3.12/pickle.py", line 554, in save
+    f(self, obj)  # Call unbound method with explicit self
+    ^^^^^^^^^^^^
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 1893, in save_type
+    _save_with_postproc(pickler, (_create_type, (
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 1135, in _save_with_postproc
+    pickler.save_reduce(*reduction, obj=obj)
+  File "/usr/lib/python3.12/pickle.py", line 686, in save_reduce
+    save(args)
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 423, in save
+    StockPickler.save(self, obj, save_persistent_id)
+  File "/usr/lib/python3.12/pickle.py", line 554, in save
+    f(self, obj)  # Call unbound method with explicit self
+    ^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pickle.py", line 896, in save_tuple
+    save(element)
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 423, in save
+    StockPickler.save(self, obj, save_persistent_id)
+  File "/usr/lib/python3.12/pickle.py", line 554, in save
+    f(self, obj)  # Call unbound method with explicit self
+    ^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pickle.py", line 881, in save_tuple
+    save(element)
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 423, in save
+    StockPickler.save(self, obj, save_persistent_id)
+  File "/usr/lib/python3.12/pickle.py", line 554, in save
+    f(self, obj)  # Call unbound method with explicit self
+    ^^^^^^^^^^^^
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 1893, in save_type
+    _save_with_postproc(pickler, (_create_type, (
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 1135, in _save_with_postproc
+    pickler.save_reduce(*reduction, obj=obj)
+  File "/usr/lib/python3.12/pickle.py", line 686, in save_reduce
+    save(args)
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 423, in save
+    StockPickler.save(self, obj, save_persistent_id)
+  File "/usr/lib/python3.12/pickle.py", line 554, in save
+    f(self, obj)  # Call unbound method with explicit self
+    ^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pickle.py", line 896, in save_tuple
+    save(element)
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 423, in save
+    StockPickler.save(self, obj, save_persistent_id)
+  File "/usr/lib/python3.12/pickle.py", line 554, in save
+    f(self, obj)  # Call unbound method with explicit self
+    ^^^^^^^^^^^^
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 1266, in save_module_dict
+    StockPickler.save_dict(pickler, obj)
+  File "/usr/lib/python3.12/pickle.py", line 966, in save_dict
+    self._batch_setitems(obj.items())
+  File "/usr/lib/python3.12/pickle.py", line 990, in _batch_setitems
+    save(v)
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 423, in save
+    StockPickler.save(self, obj, save_persistent_id)
+  File "/usr/lib/python3.12/pickle.py", line 554, in save
+    f(self, obj)  # Call unbound method with explicit self
+    ^^^^^^^^^^^^
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 2046, in save_function
+    _save_with_postproc(pickler, (_create_function, (
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 1150, in _save_with_postproc
+    pickler._batch_setitems(iter(source.items()))
+  File "/usr/lib/python3.12/pickle.py", line 990, in _batch_setitems
+    save(v)
+  File "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/.venv/lib/python3.12/site-packages/dill/_dill.py", line 423, in save
+    StockPickler.save(self, obj, save_persistent_id)
+  File "/usr/lib/python3.12/pickle.py", line 583, in save
+    self.save_global(obj, rv)
+  File "/usr/lib/python3.12/pickle.py", line 1068, in save_global
+    raise PicklingError(
+_pickle.PicklingError: Can't pickle sentinel: it's not the same object as typing_extensions.sentinel
+INFO:neps.runtime:Worker 'worker_0' evaluated trial: 1_rung_0 as State.CRASHED.
+ERROR:neps.runtime:Error during evaluation of '1_rung_0' : {'SAMPLING__Resolvable.learning_rate::float__1e-05_0.1_True': 0.020317142202962286, 'SAMPLING__Resolvable.weight_decay::float__1e-06_0.2_True': 6.475956892372484e-06, 'SAMPLING__Resolvable.optimizer_cls.args::categorical__6': 2, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[0].sequence[0].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[0].sequence[1].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[0].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_categorical::categorical__8': 2, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[0].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical::categorical__2': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[0].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical.sampled_value::categorical__3': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[1].sequence[0].resampled_categorical::categorical__2': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[1].sequence[1].resampled_categorical::categorical__2': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[1].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_categorical::categorical__3': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[1].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical::categorical__2': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[1].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[2].resampled_categorical::categorical__2': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[0].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[1].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_categorical::categorical__8': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_categorical.sampled_value.resampled_operation.kwargs.mapping_value{constant}.resampled_categorical::categorical__7': 1, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.args.sampled_value.sequence[2].sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical.sampled_value::categorical__4': 1, 'SAMPLING__Resolvable.optimizer_cls.kwargs.mapping_value{u1}.sequence[1].resampled_categorical::categorical__3': 2, 'SAMPLING__Resolvable.optimizer_cls.kwargs.mapping_value{u1}.sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_categorical::categorical__3': 1, 'SAMPLING__Resolvable.optimizer_cls.kwargs.mapping_value{u1}.sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[1].resampled_categorical::categorical__2': 0, 'SAMPLING__Resolvable.optimizer_cls.kwargs.mapping_value{u1}.sequence[1].resampled_categorical.sampled_value.resampled_operation.args.sequence[2].resampled_categorical::categorical__2': 1, 'ENVIRONMENT__fidelity': 4}.
+ERROR:neps.runtime:Can't pickle sentinel: it's not the same object as typing_extensions.sentinel
+NoneType: None
