@@ -1,21 +1,19 @@
 #!/bin/bash
 #SBATCH --job-name=short_46
-#SBATCH --output=/logs/%x/%A/%a.out
-#SBATCH --error=/logs/%x/%A/%a.err
-#SBATCH --time=00:40:00
+#SBATCH --output=neps_runs/logs/%x/%A/%a.out
+#SBATCH --error=neps_runs/logs/%x/%A/%a.err
+#SBATCH --time=01:00:00
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=16
 #SBATCH --partition=testdlc2_gpu-l40s
 #SBATCH --array=0-0
 
 # Create log directory
-mkdir -p logs/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/
+mkdir -p neps_runs/logs/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/
 
 # Auto-detect number of GPUs from SLURM allocation (default to 2)
 nproc_per_node=${SLURM_GPUS_PER_NODE:-2}
 
-# Create log directory in HOME (periodic sync destination)
-mkdir -p neps_runs/_log/${SLURM_JOB_NAME}/${SLURM_ARRAY_JOB_ID}/
 
 # Activate environment
 source ./.venv/bin/activate
@@ -35,6 +33,12 @@ neps_mode="overwrite"                          # overwrite/continuation/normal -
 echo "Running NEPS with optimizer: $neps_optimizer, model size: $model_size, seed: $seed"
 
 start_time=$(date +%s)
+
+# Export debug env vars for NCCL/CUDA/PyTorch to get more diagnostics
+export PYTHONUNBUFFERED=1
+export NCCL_DEBUG=INFO
+export NCCL_DEBUG_SUBSYS=ALL
+export CUDA_LAUNCH_BLOCKING=1
 
 python -u neps_nos/neps_pipeline.py \
     --seed $seed \

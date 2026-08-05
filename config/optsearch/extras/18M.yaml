@@ -5,7 +5,7 @@
 deterministic: False
 seed: 1996
 
-trainset_path: "/home/hk-project-p0023364/hgf_omt7140/data/lm/fwedu/fwedu_sample_100B_tokenizer_GPTNeoX/tokenized_EleutherAI_gpt-neox-20b/ctx_2048/train"
+trainset_path: "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/data/fwedu/fwedu_sample_100B_tokenizer_GPTNeoX/tokenized_EleutherAI_gpt-neox-20b/ctx_2048/train"
 vocab_size: 50280 # tokenizer len: 50277, round up to shard
 seq_len: 1024
 sampler: 'stateful_random'
@@ -13,7 +13,7 @@ sampler_seed: 1996
 num_workers: 4
 
 eval: True
-validset_path: "/home/hk-project-p0023364/hgf_omt7140/data/lm/fwedu/fwedu_sample_100B_tokenizer_GPTNeoX/tokenized_EleutherAI_gpt-neox-20b/ctx_2048/valid"
+validset_path: "/work/dlc2workfs2/gebureka-neps_bo/LLM_task/data/fwedu/fwedu_sample_100B_tokenizer_GPTNeoX/tokenized_EleutherAI_gpt-neox-20b/ctx_2048/valid"
 valid_tokens: 2000000  # ~2000 samples
 eval_every_steps: 2000
 

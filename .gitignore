@@ -61,6 +61,7 @@ neps_nos/old/
 neps_nos/tests/
 neps_cluster_scripts/old/
 neps_cluster_scripts/tests/
+cache/
 
 # ml experiments
 opt-search/

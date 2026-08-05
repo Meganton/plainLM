@@ -2,8 +2,8 @@
 
 #SBATCH --account=p_deeplearning
 #SBATCH --job-name=test
-#SBATCH --error=/home/hk-project-p0023364/hgf_omt7140/log/%x_%A_%a.err
-#SBATCH --output=/home/hk-project-p0023364/hgf_omt7140/log/%x_%A_%a.out
+#SBATCH --error=/work/dlc2workfs2/gebureka-neps_bo/LLM_task/log/%x_%A_%a.err
+#SBATCH --output=/work/dlc2workfs2/gebureka-neps_bo/LLM_task/log/%x_%A_%a.out
 #SBATCH --time=00:10:00
 #SBATCH --requeue
 #SBATCH --gres=gpu:1

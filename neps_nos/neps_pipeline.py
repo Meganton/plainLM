@@ -12,7 +12,7 @@ import socket
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*invalid value encountered in cast.*")
 import subprocess
-import dill
+import cloudpickle
 import torch
 from functools import partial
 from neps_nos.utils.model_train_function import CFG_PATH_46M, CFG_PATH_8M
@@ -144,9 +144,9 @@ def run_training(
     pipeline_directory.mkdir(parents=True, exist_ok=True)
 
     # Serialize optimizer to a file; torchrun_worker.py deserializes it.
-    opt_file = pipeline_directory / "optimizer.dill"
+    opt_file = pipeline_directory / "optimizer.cloudpickle"
     with open(opt_file, 'wb') as f:
-        dill.dump(optimizer_cls, f)
+        cloudpickle.dump(optimizer_cls, f)
 
     port = _find_free_port()
     worker_script = Path(__file__).parent / "utils" / "torchrun_worker.py"
@@ -154,6 +154,7 @@ def run_training(
     cmd = [
         sys.executable, "-m", "torch.distributed.run",
         "--standalone",
+        "--tee=3",
         f"--nproc_per_node={nproc_per_node}",
         f"--master_port={port}",
         str(worker_script),
@@ -172,6 +173,8 @@ def run_training(
     env = {
         **os.environ,
         "PYTHONUNBUFFERED": "1",
+        "PYTHONFAULTHANDLER": "1",
+        "TORCH_DISTRIBUTED_DEBUG": "DETAIL",
         # Helps reduce allocator fragmentation across repeated trials.
         "PYTORCH_ALLOC_CONF": "expandable_segments:True",
         "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
@@ -243,6 +246,16 @@ def evaluate_pipeline_base(
     return {"objective_to_minimize": valid_loss, "cost": cost}
 
 
+def set_global_seeds(seed: int = 42):
+    import random
+    import numpy as np
+    import torch
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NEPS NOS Training Pipeline")
     # Example:  python neps_nos/neps_pipeline.py --result_dir neps_runs/testrun1 --neps_space_config NLinesU_f_l_nw --runtime 1
@@ -261,6 +274,8 @@ if __name__ == "__main__":
     parser.add_argument("--neps_mode", type=str, default="normal", choices=["normal", "continuation", "overwrite", "results"], help="NEPS run mode: 'normal' (default), 'continuation' (resume previous run, so no warmstarting), 'overwrite' (delete and restart), 'results' (skip NEPS and extract results from existing run).")
     parser.add_argument("--nproc_per_node", type=int, default=4, help="Number of GPU processes per node.")
     args = parser.parse_args()
+
+    set_global_seeds(args.seed)
 
     # Setup directories
     run_directory, results_dir, neps_dir, results_cache_dir, results_filename = setup_result_directories(args)
